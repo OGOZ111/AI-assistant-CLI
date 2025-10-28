@@ -1,0 +1,105 @@
+{
+  "name": "Luke B",
+  "role": "Full Stack Developer",
+  "based_in": "Finland",
+  "skills": [
+    "React",
+    "Node.js",
+    "Express",
+    "MongoDB",
+    "Tailwind",
+    "TypeScript"
+  ],
+  "experience": [
+    "Frontend and backend development with React and Node.js",
+    "End-to-end testing, bug fixing, and UI/UX enhancements",
+    "Contributed to team workflow with Git branching and Trello management"
+  ],
+  "projects": [
+    {
+      "name": "Bandersnatch CLI",
+      "description": "Interactive AI-driven portfolio simulating a sentient computer"
+    },
+    {
+      "name": "Smart Home Dashboard",
+      "description": "Control IoT devices using a unified web interface"
+    }
+  ],
+  "features": [
+    "ASCII banner with chunked reveal, jitter, beeps, and responsive scaling",
+    "OpenAI-powered assistant with RAG for Luke-specific info",
+    "Vector Database integration for accurate, up-to-date responses",
+    "Visual glitch trigger (/glitch) scoped to output area",
+    "Optional pixel-dot mask overlay and custom scrollbars",
+    "DOS-like prompt with live clock: C:\\SIM\\USER [HH:MM:SS]>"
+  ],
+  "tips": [
+    "Use 'banner' to replay the intro ASCII.",
+    "Try 'dir' or 'ls' for a themed directory listing.",
+    "'scan' runs a small diagnostics sequence with multiple bars.",
+    "Arrow Up/Down cycles your OS history (if your browser remembers).",
+    "Commands are case-insensitive; spaces around arguments are ignored."
+  ],
+  "creditsLines": [
+    "Concept & Implementation: You + this assistant",
+    "Tech: React + Vite, Tailwind via PostCSS, a hint of WebAudio",
+    "Thanks to classic terminal UIs for the inspiration"
+  ],
+  "versionInfo": {
+    "title": "Ban DERSNATCH CLI — dev build",
+    "ui": "UI: client-side simulated terminal",
+    "server": "Server: local endpoint for AI replies"
+  },
+  "changelog": [
+    "Added DOS-style prompt clock [HH:MM:SS]",
+    "Banner centered horizontally; background unified",
+    "Various visual polish: scaling, pixel mask, glitch scope",
+    "Boot sequence with multiple progress steps"
+  ],
+  "faq": [
+    {
+      "q": "Is this a real shell?",
+      "a": "It's a themed UI; some commands are simulated locally for fun."
+    },
+    {
+      "q": "Why does the text glow?",
+      "a": "Phosphor nostalgia. Tune brightness if your eyes need a rest."
+    }
+  ],
+  "story": [
+    "Echoes of an offline system wake in the dark.",
+    "Fragments load; a banner blinks into place, waiting for input.",
+    "Somewhere, telemetry is muted—and that feels intentional."
+  ],
+  "github": {
+    "profile": "https://github.com/OGOZ111",
+    "repositories": [
+      "bandersnatch-cli",
+      "retro-web-terminal",
+      "ai-powered-assistant"
+    ]
+  },
+  "internship": {
+    "company": "ABC Corp",
+    "duration": "Summer 2024",
+    "role": "Software Engineering Intern"
+  },
+  "languagesList": ["JavaScript", "Python", "Typescript", "HTML/CSS"],
+  "technologiesList": ["React", "Node.js", "Express", "MongoDB"],
+  "educationList": [
+    "Helsinki Business College",
+    "Fulltime studies in Software Development",
+    "Graduation: 2024"
+  ],
+  "directory": {
+    "volume": "SIMULATION",
+    "path": "C:\\SIM\\USER",
+    "entries": [
+      { "type": "dir", "name": "." },
+      { "type": "dir", "name": ".." },
+      { "type": "file", "name": "reality.log", "size": 8192 },
+      { "type": "file", "name": "access.key", "size": 1024 },
+      { "type": "dir", "name": "echoes" }
+    ]
+  }
+}

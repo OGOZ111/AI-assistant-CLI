@@ -7,6 +7,7 @@ import useClock from "./hooks/useClock.js";
 import Prompt from "./components/Prompt.jsx";
 import steps from "./boot/steps.js";
 import { handleLocalCommand } from "./cli/localCommands.jsx";
+import { sendCommand } from "./api/command.js";
 
 // Prevent React Strict Mode from double-running the boot sequence in development
 // This resets on full page refresh, so the sequence still runs every reload.
@@ -18,7 +19,7 @@ function App() {
     "SYSTEM ONLINE. Hello There! I am Luke's CLI assistant. I can help you with various tasks and commands about Luke and his projects. Ask me anything! or type 'help' to see available commands. You can also type 'about' to learn more about me."
   );
   const [input, setInput] = useState("");
-  const [history, setHistory] = useState([]);
+  // history removed; server handles stateless commands and AI fallback
   const [typing, setTyping] = useState(false);
   const [glitching, setGlitching] = useState(false);
   const [maskEnabled, setMaskEnabled] = useState(false);
@@ -82,15 +83,7 @@ function App() {
   } = {}) =>
     new Promise((resolve) => {
       const keyBase = `banner-${Date.now()}`;
-      // Use original BAN DERSNATCH banner (no fox)
-      const _originalBannerText = `  ____                  _                      _       _       _
- |  _ \\                | |                    | |     | |     | |
- | |_) | __ _ _ __   ___| |__   ___ _ __   __ _| |_ ___| |_ ___| |__
- |  _ < / _' | '_ \\\\ / __| '_ \\\\ / _ \\\\ '_ \\\\ / _' | __/ __| __/ __| '_ \\\\ 
- | |_) | (_| | | | | (__| | | |  __/ | | | (_| | |_\\\\__ \\\\ |_\\\\__ \\\\ | | |
- |____/ \\\\__,_|_| |_|\\\\___|_| |_|\\\\___|_| |_|\\\\__,_|\\\\__|___/\\\\__|___/_| |_|
 
-        BAN DERSNATCH CLI — SIMULATION TERMINAL`;
       const bannerArr = bannerRaw.split("\n");
 
       setLines((prev) => [
@@ -218,40 +211,31 @@ function App() {
     if (handled) return;
 
     setTyping(true);
+    try {
+      const reply = await sendCommand(message);
+      setLines((prev) => [
+        ...prev,
+        <>
+          <span>&gt; </span>
+          <Typewriter
+            text={reply}
+            speed={40}
+            onDone={() => {
+              setTyping(false);
+              if (Math.random() < 0.08) triggerGlitch(1200);
+            }}
+          />
+        </>,
+      ]);
 
-    const res = await fetch("http://localhost:5000/api/message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history }),
-    });
-
-    const data = await res.json();
-
-    // Append assistant line using the shared Typewriter component
-    setLines((prev) => [
-      ...prev,
-      <>
-        <span>&gt; </span>
-        <Typewriter
-          text={data.reply}
-          speed={40}
-          onDone={() => {
-            setTyping(false);
-            // ~8% chance to trigger a violent glitch after an AI reply
-            if (Math.random() < 0.08) {
-              triggerGlitch(1200);
-            }
-          }}
-        />
-      </>,
-    ]);
-
-    // Track conversation history for server context
-    setHistory((prev) => [
-      ...prev,
-      { role: "user", content: message },
-      { role: "assistant", content: data.reply },
-    ]);
+      // optionally track history locally here if needed in the future
+    } catch {
+      setLines((prev) => [
+        ...prev,
+        "> Error contacting server. Falling back to local help.",
+      ]);
+      setTyping(false);
+    }
   }
 
   return (
@@ -267,7 +251,7 @@ function App() {
       <div className="w-[95vw] max-w-3xl border border-gray-700 rounded-md shadow-[0_0_40px_rgba(0,255,0,0.15)] bg-black/95">
         {/* Title bar */}
         <div className="flex items-center justify-between h-8 px-3 bg-[#0b0b0b] border-b border-gray-700 text-gray-300 text-xs tracking-wide select-none">
-          <span>C:\\Windows\\System32\\cmd.exe</span>
+          <span>C:\System\Luke.cmd</span>
           <div className="flex items-center gap-1 opacity-80">
             <span className="inline-block w-3 h-3 bg-gray-600" />
             <span className="inline-block w-3 h-3 bg-gray-600" />
@@ -294,7 +278,7 @@ function App() {
               onSubmit={handleSubmit}
               className="mt-4 flex items-center gap-2 flex-wrap"
             >
-              <Prompt path="C:\\SIM\\USER" clock={clock}>
+              <Prompt path="C:\SIM\ACTIVE_USER" clock={clock}>
                 {typing ? (
                   <span className="cursor-block" aria-hidden="true" />
                 ) : (

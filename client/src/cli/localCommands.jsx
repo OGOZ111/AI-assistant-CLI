@@ -3,31 +3,31 @@ import Progress from "../components/Progress.jsx";
 import Typewriter from "../components/Typewriter.jsx";
 import TypeAndReplace from "../components/TypeAndReplace.jsx";
 import BigSymbol from "../components/BigSymbol.jsx";
+import { sendCommand } from "../api/command.js";
 
-// Helper: type a block (optional title + array of body lines) sequentially
-function typeBlock(ctx, title, body = [], speed = 30) {
-  const lines = [];
-  if (title) lines.push(title);
-  if (Array.isArray(body) && body.length) lines.push(...body);
-  if (!lines.length) return;
+// (Removed) typeBlock helper; informational commands now come from server
 
-  ctx.setTyping?.(true);
-
-  const run = (i) => {
-    if (i >= lines.length) {
-      ctx.setTyping?.(false);
-      return;
-    }
-    const key = `tb-${Date.now()}-${i}`;
+// Helper: call backend for a command and type the response
+async function typeServer(ctx, cmd, speed = 30) {
+  try {
+    ctx.setTyping?.(true);
+    const reply = await sendCommand(cmd);
+    const key = `sv-${Date.now()}`;
     ctx.setLines((prev) => [
       ...prev,
       <span key={key}>
-        <Typewriter text={lines[i]} speed={speed} onDone={() => run(i + 1)} />
+        <Typewriter
+          text={reply}
+          speed={speed}
+          onDone={() => ctx.setTyping?.(false)}
+        />
       </span>,
     ]);
-  };
-
-  run(0);
+  } catch {
+    ctx.setLines((prev) => [...prev, "> Server unavailable for this command."]);
+    ctx.setTyping?.(false);
+  }
+  return true;
 }
 
 export async function handleLocalCommand(message, ctx) {
@@ -109,144 +109,61 @@ export async function handleLocalCommand(message, ctx) {
     return true;
   }
 
-  // info blocks
+  // info blocks (backend-routed)
   if (lower === "about") {
-    typeBlock(ctx, "> ABOUT", [
-      " - I am handbuilt by Luke to showcase his skills and projects.",
-      "- He coded me using React, Node.js, Tailwind CSS, Express to create an immersive CLI experience.",
-      "- I use RAG (Retrieval-Augmented Generation) to provide accurate and up-to-date responses about Luke and his work via a remote server.",
-      "- This is a retro-styled simulation terminal inspired by 80s CLI aesthetics and the TV show Bandersnatch, and just like the show, your choices matter and I can respond accordingly.",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "features") {
-    typeBlock(ctx, "> FEATURES", [
-      "- ASCII banner with chunked reveal, jitter, beeps, and responsive scaling",
-      "- OpenAI-powered assistant with RAG for Luke-specific info",
-      "- Vector Database integration for accurate, up-to-date responses",
-      "- Visual glitch trigger (/glitch) scoped to output area",
-      "- Optional pixel-dot mask overlay and custom scrollbars",
-      "- DOS-like prompt with live clock: C:\\SIM\\USER [HH:MM:SS]>",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "tips") {
-    typeBlock(ctx, "> TIPS", [
-      "- Use 'banner' to replay the intro ASCII.",
-      "- Try 'dir' or 'ls' for a themed directory listing.",
-      "- 'scan' runs a small diagnostics sequence with multiple bars.",
-      "- Arrow Up/Down cycles your OS history (if your browser remembers).",
-      "- Commands are case-insensitive; spaces around arguments are ignored.",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "credits") {
-    typeBlock(ctx, "> CREDITS", [
-      "Concept & Implementation: You + this assistant",
-      "Tech: React + Vite, Tailwind via PostCSS, a hint of WebAudio",
-      "Thanks to classic terminal UIs for the inspiration",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "version" || lower === "ver") {
-    typeBlock(ctx, "> VERSION", [
-      "Ban DERSNATCH CLI — dev build",
-      "UI: client-side simulated terminal",
-      "Server: local endpoint for AI replies",
-    ]);
-    return true;
+    return await typeServer(ctx, "version", 30);
   }
   if (lower === "changelog") {
-    typeBlock(ctx, "> CHANGELOG", [
-      "- Added DOS-style prompt clock [HH:MM:SS]",
-      "- Banner centered horizontally; background unified",
-      "- Various visual polish: scaling, pixel mask, glitch scope",
-      "- Boot sequence with multiple progress steps",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "faq") {
-    typeBlock(ctx, "> FAQ", [
-      "Q: Is this a real shell?",
-      "A: It's a themed UI; some commands are simulated locally for fun.",
-      "Q: Why does the text glow?",
-      "A: Phosphor nostalgia. Tune brightness if your eyes need a rest.",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "story") {
-    typeBlock(ctx, "> STORY", [
-      "Echoes of an offline system wake in the dark.",
-      "Fragments load; a banner blinks into place, waiting for input.",
-      "Somewhere, telemetry is muted—and that feels intentional.",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
   if (lower === "projects") {
-    typeBlock(ctx, "> PROJECTS", [
-      " - Project 1: Bandersnatch CLI",
-      " - Project 2: Retro Web Terminal",
-      " - Project 3: AI-Powered Assistant",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "experience") {
-    typeBlock(ctx, "> EXPERIENCE", [
-      " - Role: Full-Stack Developer",
-      " - Duration: 2020 - Present",
-      " - Technologies: React, Tailwind CSS, Node.js",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
+  }
+
+  if (lower === "skills") {
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "github") {
-    typeBlock(ctx, "> GITHUB", [
-      " - Profile: https://github.com/OGOZ111",
-      " - Repositories:",
-      "   - bandersnatch-cli",
-      "   - retro-web-terminal",
-      "   - ai-powered-assistant",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "internship") {
-    typeBlock(ctx, "> INTERNSHIP", [
-      " - Company: ABC Corp",
-      " - Duration: Summer 2024",
-      " - Role: Software Engineering Intern",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "languages") {
-    typeBlock(ctx, "> LANGUAGES", [
-      " - JavaScript",
-      " - Python",
-      " - Typescript",
-      " - HTML/CSS",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "technologies") {
-    typeBlock(ctx, "> TECHNOLOGIES", [
-      " - React",
-      " - Node.js",
-      " - Express",
-      " - MongoDB",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "education") {
-    typeBlock(ctx, "> EDUCATION", [
-      " - Helsinki Business College",
-      " - Fulltime studies in Software Development",
-      " - Graduation: 2024",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   if (lower === "netflix") {
@@ -287,10 +204,12 @@ export async function handleLocalCommand(message, ctx) {
   }
 
   if (lower === "commands") {
-    typeBlock(ctx, "> LINKEDIN", [
-      " - There are no commands. Only paths. Choose wisely.",
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
+  }
+
+  // backend easter eggs
+  if (["bandersnatch", "control", "mirror"].includes(lower)) {
+    return await typeServer(ctx, lower, 30);
   }
 
   // mode 80|auto
@@ -347,21 +266,7 @@ export async function handleLocalCommand(message, ctx) {
 
   // dir / ls
   if (["dir", "ls"].includes(lower)) {
-    const now = new Date();
-    const date = now.toLocaleDateString();
-    const time = now.toLocaleTimeString();
-    ctx.setLines((prev) => [
-      ...prev,
-      ` Volume in drive C is SIMULATION`,
-      ` Directory of C:\\SIM\\USER`,
-      ``,
-      `${date}  ${time}    <DIR>          .`,
-      `${date}  ${time}    <DIR>          ..`,
-      `${date}  ${time}                 8192 reality.log`,
-      `${date}  ${time}                 1024 access.key`,
-      `${date}  ${time}    <DIR>          echoes`,
-    ]);
-    return true;
+    return await typeServer(ctx, lower, 30);
   }
 
   // not handled
