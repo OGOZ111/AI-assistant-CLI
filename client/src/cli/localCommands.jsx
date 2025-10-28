@@ -20,6 +20,7 @@ async function typeServer(ctx, cmd, speed = 30) {
           <Typewriter
             text={reply}
             speed={speed}
+            onTick={() => ctx.scrollToBottom?.("auto")}
             onDone={() => ctx.setTyping?.(false)}
           />
         </span>
@@ -188,6 +189,7 @@ export async function handleLocalCommand(message, ctx) {
             <Typewriter
               text={normalized}
               speed={30}
+              onTick={() => ctx.scrollToBottom?.("auto")}
               onDone={() => ctx.setTyping?.(false)}
             />
           </span>

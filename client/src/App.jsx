@@ -27,6 +27,12 @@ function App() {
   const contentRef = useRef(null);
   const clock = useClock();
 
+  function scrollToBottom(behavior = "auto") {
+    const el = contentRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }
+
   // Auto-scroll to bottom whenever lines update or typing changes
   useEffect(() => {
     const el = contentRef.current;
@@ -132,7 +138,12 @@ function App() {
         ...prev,
         <>
           <span>&gt; </span>
-          <Typewriter text={text} speed={speed} onDone={onDone} />
+          <Typewriter
+            text={text}
+            speed={speed}
+            onDone={onDone}
+            onTick={() => scrollToBottom("auto")}
+          />
         </>,
       ]);
     };
@@ -207,6 +218,7 @@ function App() {
       setTyping,
       showBannerSlow,
       triggerGlitch,
+      scrollToBottom: () => scrollToBottom("auto"),
     });
     if (handled) return;
 
@@ -221,6 +233,7 @@ function App() {
             <Typewriter
               text={reply}
               speed={40}
+              onTick={() => scrollToBottom("auto")}
               onDone={() => {
                 setTyping(false);
                 if (Math.random() < 0.08) triggerGlitch(1200);

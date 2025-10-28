@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 
-export default function Typewriter({ text, speed = 30, onDone }) {
+export default function Typewriter({ text, speed = 30, onDone, onTick }) {
   const [displayed, setDisplayed] = useState("");
 
   useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
       setDisplayed(text.slice(0, i + 1));
+      if (onTick) onTick(i + 1);
       i++;
       if (i === text.length) {
         clearInterval(interval);
@@ -15,7 +16,7 @@ export default function Typewriter({ text, speed = 30, onDone }) {
     }, speed);
 
     return () => clearInterval(interval);
-  }, [text, speed, onDone]);
+  }, [text, speed, onDone, onTick]);
 
   if (!displayed) return <span />;
   const head = displayed.slice(0, -1);
