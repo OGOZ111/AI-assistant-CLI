@@ -1,0 +1,519 @@
+@import "tailwindcss";
+
+body {
+  background-color: black;
+  color: #00ff00;
+  font-family: "Courier New", monospace;
+  text-shadow: 0 0 10px #00ff00;
+}
+
+/* ---- Global glitch/flicker effect (overlay + jitter) ---- */
+:root {
+  --glitch-duration: 1200ms;
+}
+
+/* --- CRT curvature + vignette --- */
+.crt {
+  position: relative;
+  isolation: isolate;
+  /* tiny contrast/saturation bump for phosphor feel */
+  filter: contrast(1.03) saturate(1.06);
+}
+.crt::after {
+  /* subtle radial vignette */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 0, 0, 0) 60%,
+      rgba(0, 0, 0, 0.15) 85%,
+      rgba(0, 0, 0, 0.28) 100%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0) 70%
+    );
+}
+
+/* Mild barrel-ish hint by soft inner shadow on edges */
+.crt {
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5),
+    inset 0 0 120px rgba(0, 0, 0, 0.35);
+}
+
+/* --- Phosphor decay on new text --- */
+.phosphor {
+  animation: phosphor-decay 520ms ease-out both;
+}
+@keyframes phosphor-decay {
+  0% {
+    text-shadow: 0 0 1px rgba(0, 255, 0, 0.8), 0 0 6px rgba(0, 255, 0, 0.8),
+      0 0 14px rgba(0, 255, 0, 0.6);
+    opacity: 1;
+  }
+  100% {
+    text-shadow: none; /* base glow remains from body */
+    opacity: 1;
+  }
+}
+
+/* --- 80-column mode --- */
+.mode-80 {
+  max-width: 80ch;
+}
+
+/* --- Sweep line flash (one-off) --- */
+.sweep-line {
+  position: relative;
+  isolation: isolate;
+}
+.sweep-line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -15%;
+  height: 12%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  mix-blend-mode: screen;
+  animation: sweep-down 1100ms ease-out forwards;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes sweep-down {
+  from {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+}
+
+/* --- Ghosting for bright banners/headers --- */
+.ghosting {
+  text-shadow: -1px 0 0 rgba(255, 64, 64, 0.08),
+    1px 0 0 rgba(64, 255, 255, 0.08), 0 0 10px rgba(0, 255, 0, 0.08);
+}
+
+.glitch-container {
+  position: relative;
+}
+
+/* Target area that will flicker/jitter */
+.glitch-target {
+  position: relative;
+  will-change: transform, filter, opacity;
+}
+
+.glitch-active .glitch-target {
+  /* Violent stack: heavy jitter + hard flicker + channel split + slight perspective */
+  animation: jitter-violent 20ms steps(1, end) infinite,
+    flicker-violent 60ms steps(2, end) infinite,
+    flash 500ms steps(2, end) infinite;
+  filter: contrast(1.8) saturate(1.6) hue-rotate(-12deg) brightness(1.25)
+    drop-shadow(-2px 0 0 #ff0040) drop-shadow(2px 0 0 #00fff6);
+  transform: perspective(1000px) rotateX(0.6deg) rotateY(-0.6deg);
+}
+
+/* Full-screen overlay with scanlines + noise */
+.glitch-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.glitch-active .glitch-overlay {
+  opacity: 1;
+}
+
+/* Old-school scrollbar theming for the terminal content pane */
+.terminal-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.terminal-scroll::-webkit-scrollbar-track {
+  background: #0b0b0b;
+  border-left: 1px solid #1a1a1a;
+}
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2e2e2e 0%, #1f1f1f 100%);
+  border: 1px solid #3a3a3a;
+  border-radius: 2px; /* square-ish for old-school vibe */
+  box-shadow: inset 0 0 6px rgba(0, 255, 0, 0.15);
+}
+.terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border-color: #4a4a4a;
+}
+.terminal-scroll::-webkit-scrollbar-corner {
+  background: #0b0b0b;
+}
+
+.glitch-overlay::before,
+.glitch-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Scanlines */
+.glitch-overlay::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 2px,
+    transparent 3px,
+    transparent 4px
+  );
+  animation: scan calc(var(--glitch-duration) * 0.7) linear infinite;
+  mix-blend-mode: screen;
+}
+
+/* Static noise (light flicker layer) */
+.glitch-overlay::after {
+  background: radial-gradient(
+      circle at 20% 35%,
+      rgba(255, 255, 255, 0.04) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 60% 65%,
+      rgba(255, 255, 255, 0.03) 0 1.5px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 80% 25%,
+      rgba(255, 255, 255, 0.02) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 10% 80%,
+      rgba(255, 255, 255, 0.02) 0 1px,
+      transparent 2px
+    );
+  background-size: 12px 12px, 14px 14px, 10px 10px, 16px 16px;
+  animation: noise calc(var(--glitch-duration) * 0.5) steps(3, end) infinite;
+  mix-blend-mode: screen;
+}
+
+/* Additional violent tearing overlays */
+.glitch-active .glitch-container::before,
+.glitch-active .glitch-container::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0;
+}
+
+.glitch-active .glitch-container::before {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 64, 0.12),
+    rgba(0, 255, 246, 0.12)
+  );
+  mix-blend-mode: screen;
+  animation: tear 700ms steps(2, end) infinite;
+}
+
+.glitch-active .glitch-container::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0)
+  );
+  mix-blend-mode: screen;
+  animation: tear2 900ms steps(3, end) infinite;
+}
+
+@keyframes scan {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 100%;
+  }
+}
+
+@keyframes noise {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(1px, -1px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-1px, 1px);
+    opacity: 0.9;
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  30% {
+    opacity: 0.85;
+  }
+  40% {
+    opacity: 0.98;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.96;
+  }
+  70% {
+    opacity: 0.88;
+  }
+  80% {
+    opacity: 0.97;
+  }
+  90% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes jitter {
+  0% {
+    transform: translate(0, 0) skewX(0deg);
+  }
+  25% {
+    transform: translate(1px, 0) skewX(0.2deg);
+  }
+  50% {
+    transform: translate(-1px, 0) skewX(-0.2deg);
+  }
+  75% {
+    transform: translate(0, 0.5px) skewX(0.1deg);
+  }
+  100% {
+    transform: translate(0, 0) skewX(0deg);
+  }
+}
+
+/* Violent variants */
+@keyframes flicker-violent {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  8% {
+    opacity: 0.65;
+  }
+  12% {
+    opacity: 0.3;
+  }
+  22% {
+    opacity: 0.9;
+  }
+  28% {
+    opacity: 0.4;
+  }
+  45% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.5;
+  }
+  70% {
+    opacity: 0.85;
+  }
+  82% {
+    opacity: 0.35;
+  }
+  92% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes jitter-violent {
+  0% {
+    transform: translate3d(0, 0, 0) skewX(0deg) rotate(0deg);
+  }
+  15% {
+    transform: translate3d(2px, -1px, 0) skewX(0.6deg) rotate(0.2deg);
+  }
+  30% {
+    transform: translate3d(-3px, 1px, 0) skewX(-0.8deg) rotate(-0.3deg);
+  }
+  45% {
+    transform: translate3d(1px, 2px, 0) skewX(0.4deg) rotate(0.15deg);
+  }
+  60% {
+    transform: translate3d(-2px, -2px, 0) skewX(-0.7deg) rotate(-0.2deg);
+  }
+  75% {
+    transform: translate3d(3px, 0, 0) skewX(0.9deg) rotate(0.35deg);
+  }
+  90% {
+    transform: translate3d(-1px, 1px, 0) skewX(-0.5deg) rotate(-0.15deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) skewX(0deg) rotate(0deg);
+  }
+}
+
+/* Occasional hard flashes (invert/overbright) */
+@keyframes flash {
+  0%,
+  49%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: invert(1) hue-rotate(180deg) brightness(1.6) contrast(1.9);
+  }
+}
+
+/* Horizontal tearing/slice motion using clip-path bands */
+@keyframes tear {
+  0% {
+    opacity: 0;
+    clip-path: polygon(0 12%, 100% 12%, 100% 18%, 0 18%);
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.3;
+    clip-path: polygon(0 42%, 100% 42%, 100% 48%, 0 48%);
+    transform: translateX(-6px);
+  }
+  100% {
+    opacity: 0;
+    clip-path: polygon(0 72%, 100% 72%, 100% 78%, 0 78%);
+    transform: translateX(6px);
+  }
+}
+
+@keyframes tear2 {
+  0% {
+    opacity: 0;
+    clip-path: polygon(0 25%, 100% 25%, 100% 28%, 0 28%);
+    transform: translateX(0);
+  }
+  33% {
+    opacity: 0.25;
+    clip-path: polygon(0 5%, 100% 5%, 100% 9%, 0 9%);
+    transform: translateX(8px);
+  }
+  66% {
+    opacity: 0.2;
+    clip-path: polygon(0 85%, 100% 85%, 100% 89%, 0 89%);
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 0;
+    clip-path: polygon(0 55%, 100% 55%, 100% 59%, 0 59%);
+    transform: translateX(0);
+  }
+}
+
+code {
+  background-color: #111;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+pre {
+  background-color: #111;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+a {
+  color: #00ffff;
+  text-decoration: underline;
+}
+a:hover {
+  color: #ff00ff;
+}
+
+@keyframes flicker {
+  0%,
+  18%,
+  22%,
+  25%,
+  53%,
+  57%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  24%,
+  55% {
+    opacity: 0.4;
+  }
+}
+
+.glitch {
+  animation: flicker 0.15s infinite;
+  text-shadow: 0 0 2px #00ff00, 0 0 5px #00ff00, 0 0 10px #00ff00;
+}
+
+/* Blinking block cursor for disabled-input/typing states */
+@keyframes blink {
+  0%,
+  49%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+.cursor-block {
+  display: inline-block;
+  width: 0.6ch;
+  height: 1.1em;
+  background: #ffffff;
+  margin-left: 6px;
+  vertical-align: bottom;
+  animation: blink 900ms step-end infinite;
+}
+
+/* --- Pixel grid/dot mask overlay (toggleable) --- */
+.pixel-mask {
+  position: relative;
+  isolation: isolate;
+}
+.pixel-mask::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  /* Dot mask made of tiny radial gradients; tweak alpha/size to taste */
+  background-image: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.06) 0.5px,
+      transparent 0.6px
+    ),
+    radial-gradient(circle, rgba(255, 255, 255, 0.04) 0.5px, transparent 0.6px);
+  background-size: 3px 3px, 3px 3px;
+  background-position: 0 0, 1.5px 1.5px;
+  mix-blend-mode: overlay;
+  opacity: 0.12;
+}
