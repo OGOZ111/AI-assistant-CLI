@@ -3,6 +3,10 @@ import Typewriter from "./components/Typewriter.jsx";
 import Progress from "./components/Progress.jsx";
 import BannerReveal from "./components/BannerReveal.jsx";
 import bannerRaw from "./assets/banner.txt?raw";
+import useClock from "./hooks/useClock.js";
+import Prompt from "./components/Prompt.jsx";
+import steps from "./boot/steps.js";
+import { handleLocalCommand } from "./cli/localCommands.jsx";
 
 // Prevent React Strict Mode from double-running the boot sequence in development
 // This resets on full page refresh, so the sequence still runs every reload.
@@ -10,15 +14,17 @@ let BOOT_SEQ_HAS_RUN = false;
 
 function App() {
   const [lines, setLines] = useState(["> SYSTEM BOOTING..."]);
-  const [systemStatus] = useState("SYSTEM ONLINE.");
+  const [systemStatus] = useState(
+    "SYSTEM ONLINE. Hello There! I am Luke's CLI assistant. I can help you with various tasks and commands about Luke and his projects. Ask me anything! or type 'help' to see available commands. You can also type 'about' to learn more about me."
+  );
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]);
   const [typing, setTyping] = useState(false);
   const [glitching, setGlitching] = useState(false);
   const [maskEnabled, setMaskEnabled] = useState(false);
-  const [clock, setClock] = useState("");
   const [mode80, setMode80] = useState(false);
   const contentRef = useRef(null);
+  const clock = useClock();
 
   // Auto-scroll to bottom whenever lines update or typing changes
   useEffect(() => {
@@ -34,19 +40,7 @@ function App() {
     setTimeout(() => setGlitching(false), duration);
   }
 
-  // Live HH:MM:SS clock for the prompt
-  useEffect(() => {
-    const pad = (n) => String(n).padStart(2, "0");
-    const tick = () => {
-      const d = new Date();
-      setClock(
-        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-      );
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
+  // clock handled via useClock()
 
   // Tiny retro beep using Web Audio on submit / events
   function beep(freq = 520, duration = 0.08, type = "square") {
@@ -156,23 +150,6 @@ function App() {
       await new Promise((r) => setTimeout(r, 400));
 
       // Lots of realistic loading bars
-      const steps = [
-        ["memory check", 700],
-        ["I/O controller init", 900],
-        ["device enumeration", 900],
-        ["kernel modules", 1000],
-        ["network handshake", 950],
-        ["filesystem integrity", 1050],
-        ["entropy pool warm-up", 800],
-        ["RTC sync", 750],
-        ["GPU POST", 850],
-        ["audio bus", 700],
-        ["input devices", 750],
-        ["security policy", 900],
-        ["services bring-up", 1000],
-        ["telemetry muted", 650],
-      ];
-
       for (const [label, duration] of steps) {
         await addProgress(label, duration);
       }
@@ -228,189 +205,17 @@ function App() {
     ]);
     // Handle simple local CLI commands without contacting the server
     const lower = message.toLowerCase();
-    if (["clear", "cls"].includes(lower)) {
-      setLines([]);
-      return;
-    }
-    if (lower === "help") {
-      setLines((prev) => [
-        ...prev,
-        "Available commands:",
-        "  help            - show this help",
-        "  clear / cls     - clear the screen",
-        "  dir / ls        - list directory",
-        "  banner          - print the boot banner",
-        "  scan            - run diagnostics with progress",
-        "  mask on|off     - enable/disable pixel mask",
-        "  mask toggle     - toggle pixel mask",
-        "  mode 80|auto    - clamp to ~80 columns or restore",
-        "  about           - what this app is",
-        "  features        - key features overview",
-        "  tips            - usage tips and shortcuts",
-        "  credits         - acknowledgements",
-        "  version | ver   - show version info",
-        "  changelog       - latest changes",
-        "  faq             - common questions",
-        "  story           - in-universe lore",
-        "  /glitch         - trigger a visual glitch",
-      ]);
-      return;
-    }
-    if (lower === "mask on") {
-      setMaskEnabled(true);
-      setLines((prev) => [...prev, "> Pixel mask enabled."]);
-      return;
-    }
-    if (lower === "banner") {
-      setTyping(true);
-      await showBannerSlow({
-        chunkSize: 2,
-        lineDelay: 35,
-        linePause: 60,
-        beepMode: "chunk",
-        jitter: true,
-        jitterPct: 0.3,
-      });
-      setTyping(false);
-      return;
-    }
-    if (lower === "about") {
-      appendBlock("> ABOUT", [
-        "This is a retro-styled simulation terminal inspired by 80s CLI aesthetics.",
-        "Type commands to interact, trigger effects, and uncover little system behaviors.",
-        "Boot sequence, ASCII banner, glitches, and progress bars are all simulated client-side.",
-      ]);
-      return;
-    }
-    if (lower === "features") {
-      appendBlock("> FEATURES", [
-        "- ASCII banner with chunked reveal, jitter, beeps, and responsive scaling",
-        "- Progress scan routines with chained bars and realistic labels",
-        "- Retro input styling with inline cursor and beep-on-submit",
-        "- Visual glitch trigger (/glitch) scoped to output area",
-        "- Optional pixel-dot mask overlay and custom scrollbars",
-        "- DOS-like prompt with live clock: C:\\SIM\\USER [HH:MM:SS]>",
-      ]);
-      return;
-    }
-    if (lower === "tips") {
-      appendBlock("> TIPS", [
-        "- Use 'banner' to replay the intro ASCII.",
-        "- Try 'dir' or 'ls' for a themed directory listing.",
-        "- 'scan' runs a small diagnostics sequence with multiple bars.",
-        "- Arrow Up/Down cycles your OS history (if your browser remembers).",
-        "- Commands are case-insensitive; spaces around arguments are ignored.",
-      ]);
-      return;
-    }
-    if (lower === "credits") {
-      appendBlock("> CREDITS", [
-        "Concept & Implementation: You + this assistant",
-        "Tech: React + Vite, Tailwind via PostCSS, a hint of WebAudio",
-        "Thanks to classic terminal UIs for the inspiration",
-      ]);
-      return;
-    }
-    if (lower === "version" || lower === "ver") {
-      appendBlock("> VERSION", [
-        "Ban DERSNATCH CLI — dev build",
-        "UI: client-side simulated terminal",
-        "Server: local endpoint for AI replies",
-      ]);
-      return;
-    }
-    if (lower === "changelog") {
-      appendBlock("> CHANGELOG", [
-        "- Added DOS-style prompt clock [HH:MM:SS]",
-        "- Banner centered horizontally; background unified",
-        "- Various visual polish: scaling, pixel mask, glitch scope",
-        "- Boot sequence with multiple progress steps",
-      ]);
-      return;
-    }
-    if (lower === "faq") {
-      appendBlock("> FAQ", [
-        "Q: Is this a real shell?",
-        "A: It's a themed UI; some commands are simulated locally for fun.",
-        "Q: Why does the text glow?",
-        "A: Phosphor nostalgia. Tune brightness if your eyes need a rest.",
-      ]);
-      return;
-    }
-    if (lower === "story") {
-      appendBlock("> STORY", [
-        "Echoes of an offline system wake in the dark.",
-        "Fragments load; a banner blinks into place, waiting for input.",
-        "Somewhere, telemetry is muted—and that feels intentional.",
-      ]);
-      return;
-    }
-    if (lower.startsWith("mode ")) {
-      const arg = lower.split(/\s+/)[1];
-      if (arg === "80") {
-        setMode80(true);
-        setLines((p) => [...p, "> Mode set to 80 columns."]);
-      } else if (arg === "auto") {
-        setMode80(false);
-        setLines((p) => [...p, "> Mode set to auto width."]);
-      } else {
-        setLines((p) => [...p, "> Usage: mode 80|auto"]);
-      }
-      return;
-    }
-    if (lower === "scan") {
-      const keyBase = Date.now();
-      // append first progress; each onDone appends the next
-      setLines((prev) => [
-        ...prev,
-        <Progress
-          key={`p1-${keyBase}`}
-          label="scanning..."
-          duration={1200}
-          onDone={() => {
-            setLines((p2) => [
-              ...p2,
-              <Progress
-                key={`p2-${keyBase}`}
-                label="boot sectors initializing..."
-                duration={1400}
-                onDone={() => {
-                  setLines((p3) => [
-                    ...p3,
-                    <Progress
-                      key={`p3-${keyBase}`}
-                      label="disk check..."
-                      duration={1600}
-                      onDone={() => {
-                        setLines((p4) => [...p4, "> Diagnostics complete."]);
-                      }}
-                    />,
-                  ]);
-                }}
-              />,
-            ]);
-          }}
-        />,
-      ]);
-      return;
-    }
-    if (["dir", "ls"].includes(lower)) {
-      const now = new Date();
-      const date = now.toLocaleDateString();
-      const time = now.toLocaleTimeString();
-      setLines((prev) => [
-        ...prev,
-        ` Volume in drive C is SIMULATION`,
-        ` Directory of C:\\SIM\\USER`,
-        ``,
-        `${date}  ${time}    <DIR>          .`,
-        `${date}  ${time}    <DIR>          ..`,
-        `${date}  ${time}                 8192 reality.log`,
-        `${date}  ${time}                 1024 access.key`,
-        `${date}  ${time}    <DIR>          echoes`,
-      ]);
-      return;
-    }
+    const handled = await handleLocalCommand(lower, {
+      setLines,
+      setMode80,
+      setMaskEnabled,
+      maskEnabled,
+      appendBlock,
+      setTyping,
+      showBannerSlow,
+      triggerGlitch,
+    });
+    if (handled) return;
 
     setTyping(true);
 
@@ -489,18 +294,19 @@ function App() {
               onSubmit={handleSubmit}
               className="mt-4 flex items-center gap-2 flex-wrap"
             >
-              <span className="whitespace-pre">{`C:\\SIM\\USER [${clock}]> `}</span>
-              {typing ? (
-                <span className="cursor-block" aria-hidden="true" />
-              ) : (
-                <input
-                  className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  autoFocus
-                  placeholder="type and press Enter…"
-                />
-              )}
+              <Prompt path="C:\\SIM\\USER" clock={clock}>
+                {typing ? (
+                  <span className="cursor-block" aria-hidden="true" />
+                ) : (
+                  <input
+                    className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    autoFocus
+                    placeholder="type and press Enter…"
+                  />
+                )}
+              </Prompt>
             </form>
           </div>
         </div>
