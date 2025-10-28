@@ -15,6 +15,12 @@
     "End-to-end testing, bug fixing, and UI/UX enhancements",
     "Contributed to team workflow with Git branching and Trello management"
   ],
+  "education": [
+    "Helsinki Business College",
+    "Fulltime studies in Software Development",
+    "Graduation: 2024"
+  ],
+
   "projects": [
     {
       "name": "Bandersnatch CLI",

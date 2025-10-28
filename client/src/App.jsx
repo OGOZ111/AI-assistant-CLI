@@ -217,14 +217,16 @@ function App() {
         ...prev,
         <>
           <span>&gt; </span>
-          <Typewriter
-            text={reply}
-            speed={40}
-            onDone={() => {
-              setTyping(false);
-              if (Math.random() < 0.08) triggerGlitch(1200);
-            }}
-          />
+          <span className="whitespace-pre-wrap">
+            <Typewriter
+              text={reply}
+              speed={40}
+              onDone={() => {
+                setTyping(false);
+                if (Math.random() < 0.08) triggerGlitch(1200);
+              }}
+            />
+          </span>
         </>,
       ]);
 

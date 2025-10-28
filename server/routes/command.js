@@ -42,6 +42,8 @@ function buildStaticCommands() {
     skills: ["> SKILLS", `Installed modules: ${memory.skills.join(", ")}`].join(
       "\n"
     ),
+    education: ["> EDUCATION", ...memory.education].join("\n"),
+
     experience: [
       "> EXPERIENCE",
       ...memory.experience.map((l) => `- ${l}`),

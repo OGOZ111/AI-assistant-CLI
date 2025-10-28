@@ -16,11 +16,13 @@ async function typeServer(ctx, cmd, speed = 30) {
     ctx.setLines((prev) => [
       ...prev,
       <span key={key}>
-        <Typewriter
-          text={reply}
-          speed={speed}
-          onDone={() => ctx.setTyping?.(false)}
-        />
+        <span className="whitespace-pre-wrap">
+          <Typewriter
+            text={reply}
+            speed={speed}
+            onDone={() => ctx.setTyping?.(false)}
+          />
+        </span>
       </span>,
     ]);
   } catch {
@@ -163,7 +165,39 @@ export async function handleLocalCommand(message, ctx) {
   }
 
   if (lower === "education") {
+    //
     return await typeServer(ctx, lower, 30);
+  }
+
+  // recruiter mode (dedicated backend route)
+  if (lower === "recruiter") {
+    try {
+      ctx.setTyping?.(true);
+      const res = await fetch("http://localhost:5000/api/recruiter");
+      const data = await res.json();
+      // Normalize message into multiline text if backend used inline separators
+      let normalized = String(data.message ?? "");
+      if (!/\r?\n/.test(normalized)) {
+        normalized = normalized.replace(/\s*>\s*/g, "\n> ").trim();
+      }
+      const key = `rec-${Date.now()}`;
+      ctx.setLines((prev) => [
+        ...prev,
+        <span key={key}>
+          <span className="whitespace-pre-wrap">
+            <Typewriter
+              text={normalized}
+              speed={30}
+              onDone={() => ctx.setTyping?.(false)}
+            />
+          </span>
+        </span>,
+      ]);
+    } catch {
+      ctx.setLines((prev) => [...prev, "> Recruiter endpoint unavailable."]);
+      ctx.setTyping?.(false);
+    }
+    return true;
   }
 
   if (lower === "netflix") {
@@ -201,10 +235,6 @@ export async function handleLocalCommand(message, ctx) {
       />,
     ]);
     return true;
-  }
-
-  if (lower === "commands") {
-    return await typeServer(ctx, lower, 30);
   }
 
   // backend easter eggs
