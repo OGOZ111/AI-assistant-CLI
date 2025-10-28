@@ -1,0 +1,16 @@
+{
+  "name": "bandersnatch-cli",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root package to run client and server together",
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev",
+    "dev": "concurrently -n CLIENT,SERVER -c green,cyan \"npm:client\" \"npm:server\"",
+    "start": "concurrently -n CLIENT,SERVER -c green,cyan \"npm --prefix client run dev\" \"npm --prefix server start\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

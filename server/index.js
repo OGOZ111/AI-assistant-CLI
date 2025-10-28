@@ -34,7 +34,7 @@ app.post("/api/message", async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply: "SYSTEM ERROR: REALITY UNSTABLE..." });
+    res.status(500).json({ reply: "SYSTEM ERROR." });
   }
 });
 
