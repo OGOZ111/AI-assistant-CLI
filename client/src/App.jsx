@@ -245,6 +245,37 @@ function App() {
       ]);
     });
 
+  // Export transcript: copy to clipboard and download as .md
+  const exportTranscript = async () => {
+    const el = contentRef.current;
+    if (!el) return;
+    // Get visible text; normalize newlines
+    const text = (el.innerText || "").replace(/\r?\n/g, "\n");
+    // Clipboard (best-effort)
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      // ignore clipboard errors (e.g., permissions)
+    }
+    // Download as markdown
+    const ts = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const name = `mirror-node-session-${ts.getFullYear()}${pad(
+      ts.getMonth() + 1
+    )}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}.md`;
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
   // Pre-boot menu on mount (guarded against Strict Mode double-effect)
   useEffect(() => {
     if (PREBOOT_SHOWN) return;
@@ -447,6 +478,7 @@ function App() {
       showBannerSlow,
       triggerGlitch,
       scrollToBottom: () => scrollToBottom("auto"),
+      exportTranscript,
       lang,
     });
     if (handled) return;

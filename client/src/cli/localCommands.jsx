@@ -71,6 +71,7 @@ export async function handleLocalCommand(message, ctx) {
           "  ping [--watch]  - mitattu viive (ms), valinnainen seuranta",
           "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
+          "  export          - vie istunnon teksti (leikepöytä + .md)",
           "  skannaa         - suorita diagnostiikka edistymispalkeilla",
           "  maski päälle|pois - ota pikselimaski käyttöön tai pois",
           "  maski vaihda    - vaihda maskin tila",
@@ -103,6 +104,7 @@ export async function handleLocalCommand(message, ctx) {
           "  ping [--watch]  - measure latency, optional watch",
           "  lang en|fi      - switch language on the fly",
           "  banner          - print the boot banner",
+          "  export          - export transcript (clipboard + .md)",
           "  scan            - run diagnostics with progress",
           "  mask on|off     - enable/disable pixel mask",
           "  mask toggle     - toggle pixel mask",
@@ -456,6 +458,25 @@ export async function handleLocalCommand(message, ctx) {
       } else {
         doLocalPing();
       }
+    }
+    return true;
+  }
+
+  // export transcript (clipboard + .md download)
+  if (lower === "export") {
+    try {
+      await ctx.exportTranscript?.();
+      ctx.setLines((prev) => [
+        ...prev,
+        ctx.lang === "fi"
+          ? "> Istunto viety: leikepöytä + .md ladattu."
+          : "> Transcript exported: copied to clipboard + .md downloaded.",
+      ]);
+    } catch {
+      ctx.setLines((prev) => [
+        ...prev,
+        ctx.lang === "fi" ? "> Vienti epäonnistui." : "> Export failed.",
+      ]);
     }
     return true;
   }
