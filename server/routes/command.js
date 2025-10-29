@@ -280,7 +280,7 @@ router.post("/", async (req, res) => {
     return res.json({ response: staticCommands[canonical] });
   }
 
-  // Easter eggs
+  // Easter eggs for specific commands
   if (canonical === "bandersnatch") {
     return res.json({
       response:
@@ -330,6 +330,7 @@ router.post("/", async (req, res) => {
       aiResponse.choices?.[0]?.message?.content ?? "> (no response)";
     const output = sanitizeAIOutput(outputRaw);
     res.json({ response: output });
+    console.log("AI response content:", output);
   } catch (error) {
     console.error("AI Error:", error);
     res.status(500).json({ error: "AI processing failed." });
