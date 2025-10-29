@@ -396,7 +396,7 @@ function App() {
       <div className="w-[95vw] max-w-3xl border border-gray-700 rounded-md shadow-[0_0_40px_rgba(0,255,0,0.15)] bg-black/95">
         {/* Title bar */}
         <div className="flex items-center justify-between h-8 px-3 bg-[#0b0b0b] border-b border-gray-700 text-gray-300 text-xs tracking-wide select-none">
-          <span>C:\System\Luke.cmd</span>
+          <span>C:\System\MirrorNode.cmd</span>
           <div className="flex items-center gap-1 opacity-80">
             <span className="inline-block w-3 h-3 bg-gray-600" />
             <span className="inline-block w-3 h-3 bg-gray-600" />
