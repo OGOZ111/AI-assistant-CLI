@@ -2,6 +2,7 @@ import express from "express";
 
 const router = express.Router();
 
+// GET /api/status - returns server status
 router.get("/", (req, res) => {
   const hasAI = Boolean(process.env.OPENAI_API_KEY);
   res.json({

@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 
+// GET /api/recruiter - returns recruiter mode data
 router.get("/", (req, res) => {
   console.log("Recruiter mode accessed");
   const lang = (req.query.lang || "en").toLowerCase();

@@ -4,6 +4,7 @@ import { getSupabase } from "../config/connectDB.js";
 
 const router = express.Router();
 
+// Helper to init OpenAI client
 function getOpenAI() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
@@ -136,7 +137,9 @@ router.post("/bilingual-ingest", async (req, res) => {
   const tgt = src === "en" ? "fi" : "en";
   try {
     // Translate raw -> target language using chat completion
-    const prompt = `Translate the following text to ${tgt === "fi" ? "Finnish" : "English"}. Output ONLY the translation, no quotes, no commentary.`;
+    const prompt = `Translate the following text to ${
+      tgt === "fi" ? "Finnish" : "English"
+    }. Output ONLY the translation, no quotes, no commentary.`;
     const tr = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
@@ -147,15 +150,13 @@ router.post("/bilingual-ingest", async (req, res) => {
       ],
     });
     const translated = (tr.choices?.[0]?.message?.content || "").trim();
-    if (!translated) return res.status(500).json({ error: "translation failed" });
+    if (!translated)
+      return res.status(500).json({ error: "translation failed" });
 
     // Prepare bilingual items with light language tags
     const enText = src === "en" ? raw : translated;
     const fiText = src === "fi" ? raw : translated;
-    const items = [
-      { content: `EN: ${enText}` },
-      { content: `FI: ${fiText}` },
-    ];
+    const items = [{ content: `EN: ${enText}` }, { content: `FI: ${fiText}` }];
 
     // Embed and insert
     const emb = await openai.embeddings.create({
@@ -169,7 +170,11 @@ router.post("/bilingual-ingest", async (req, res) => {
     const table = process.env.RAG_TABLE || "documents";
     const { error, data } = await supabase.from(table).insert(rows).select();
     if (error) return res.status(500).json({ error: error.message });
-    return res.json({ inserted: data?.length ?? rows.length, table, langs: ["en", "fi"] });
+    return res.json({
+      inserted: data?.length ?? rows.length,
+      table,
+      langs: ["en", "fi"],
+    });
   } catch (e) {
     console.error("RAG bilingual-ingest error:", e);
     return res.status(500).json({ error: "bilingual ingest failed" });

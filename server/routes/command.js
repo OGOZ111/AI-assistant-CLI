@@ -353,11 +353,11 @@ router.post("/", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone similar to the Bandersnatch episode of Black Mirror. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond calm and happy. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
 
-Static context about Luke (curated): ${JSON.stringify(memory)}
+          Static context about Luke (curated): ${JSON.stringify(memory)}
 
-Retrieved knowledge base snippets (may be empty):\n${ragContext}`,
+          Retrieved knowledge base snippets (may be empty):\n${ragContext}`,
         },
         {
           role: "user",

@@ -13,10 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/command", commandRouter);
-app.use("/api/recruiter", recruiterRouter);
-app.use("/api/status", statusRouter);
-app.use("/api/rag", ragRouter);
+app.use("/api/command", commandRouter); // AI command interface API route for terminal-like interactions for normal users
+app.use("/api/recruiter", recruiterRouter); // Recruiter Mode API route for tailored responses for recruiters
+app.use("/api/status", statusRouter); // Server status API route
+app.use("/api/rag", ragRouter); // RAG API route for document retrieval and question answering from knowledge base in Supabase
 
 const PORT = process.env.PORT || 5000;
 

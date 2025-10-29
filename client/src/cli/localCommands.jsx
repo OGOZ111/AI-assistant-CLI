@@ -595,26 +595,38 @@ export async function handleLocalCommand(message, ctx) {
       return true;
     }
     const token = (() => {
-      try { return localStorage.getItem("adminToken"); } catch { return null; }
+      try {
+        return localStorage.getItem("adminToken");
+      } catch {
+        return null;
+      }
     })();
     if (!token) {
-      ctx.setLines((p) => [...p, "> Missing admin token. Use: dev login <token>"]);
+      ctx.setLines((p) => [
+        ...p,
+        "> Missing admin token. Use: dev login <token>",
+      ]);
       return true;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/rag/bilingual-ingest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-token": token,
-        },
-        body: JSON.stringify({ text, sourceLang: ctx.lang || "en" }),
-      });
+      const res = await fetch(
+        "http://localhost:5000/api/rag/bilingual-ingest",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-token": token,
+          },
+          body: JSON.stringify({ text, sourceLang: ctx.lang || "en" }),
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "bilingual ingest failed");
       ctx.setLines((p) => [
         ...p,
-        `> Bilingual ingest OK: ${data.inserted ?? "?"} items -> ${data.table}.`,
+        `> Bilingual ingest OK: ${data.inserted ?? "?"} items -> ${
+          data.table
+        }.`,
       ]);
     } catch (e) {
       ctx.setLines((p) => [...p, `> Ingest error: ${e?.message || e}`]);
