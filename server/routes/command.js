@@ -5,8 +5,17 @@ import OpenAI from "openai";
 const router = express.Router();
 
 // Resolve memory.json relative to this file for robustness
-const memoryPath = new URL("../memory.json", import.meta.url);
-const memory = JSON.parse(fs.readFileSync(memoryPath, "utf8"));
+const memoryEnPath = new URL("../memory.json", import.meta.url);
+const memoryFiPath = new URL("../memory.fi.json", import.meta.url);
+
+function loadMemory(lang = "en") {
+  try {
+    if (lang === "fi" && fs.existsSync(memoryFiPath)) {
+      return JSON.parse(fs.readFileSync(memoryFiPath, "utf8"));
+    }
+  } catch {}
+  return JSON.parse(fs.readFileSync(memoryEnPath, "utf8"));
+}
 
 // Lazily construct OpenAI client only if an API key is present
 function getOpenAI() {
@@ -21,14 +30,51 @@ function getOpenAI() {
 }
 
 // Predefined static commands
-function buildStaticCommands() {
+function buildStaticCommands(memory, lang = "en") {
   const now = new Date();
   const date = now.toLocaleDateString();
   const time = now.toLocaleTimeString();
 
+  const L =
+    lang === "fi"
+      ? {
+          ABOUT: "> TIETOA",
+          SKILLS: "> TAIDOT",
+          EXPERIENCE: "> KOKEMUS",
+          FEATURES: "> OMINAISUUDET",
+          TIPS: "> VIHJEET",
+          CREDITS: "> KREDIITIT",
+          VERSION: "> VERSIO",
+          CHANGELOG: "> MUUTOSLOKI",
+          FAQ: "> UKK",
+          STORY: "> TARINA",
+          GITHUB: "> GITHUB",
+          INTERNSHIP: "> HARJOITTELU",
+          LANGUAGES: "> KIELET",
+          TECHNOLOGIES: "> TEKNOLOGIAT",
+          EDUCATION: "> KOULUTUS",
+        }
+      : {
+          ABOUT: "> ABOUT",
+          SKILLS: "> SKILLS",
+          EXPERIENCE: "> EXPERIENCE",
+          FEATURES: "> FEATURES",
+          TIPS: "> TIPS",
+          CREDITS: "> CREDITS",
+          VERSION: "> VERSION",
+          CHANGELOG: "> CHANGELOG",
+          FAQ: "> FAQ",
+          STORY: "> STORY",
+          GITHUB: "> GITHUB",
+          INTERNSHIP: "> INTERNSHIP",
+          LANGUAGES: "> LANGUAGES",
+          TECHNOLOGIES: "> TECHNOLOGIES",
+          EDUCATION: "> EDUCATION",
+        };
+
   return {
     about: [
-      "> ABOUT",
+      L.ABOUT,
       `Name: ${memory.name}`,
       `Role: ${memory.role}`,
       `Based in: ${memory.based_in}`,
@@ -39,68 +85,64 @@ function buildStaticCommands() {
       .map((p, i) => `> [${i + 1}] ${p.name}: ${p.description}`)
       .join("\n"),
 
-    skills: ["> SKILLS", `Installed modules: ${memory.skills.join(", ")}`].join(
-      "\n"
-    ),
-    education: ["> EDUCATION", ...memory.education].join("\n"),
-
-    experience: [
-      "> EXPERIENCE",
-      ...memory.experience.map((l) => `- ${l}`),
-    ].join("\n"),
-
-    features: ["> FEATURES", ...memory.features.map((l) => `- ${l}`)].join(
+    skills: [L.SKILLS, `Installed modules: ${memory.skills.join(", ")}`].join(
       "\n"
     ),
 
-    tips: ["> TIPS", ...memory.tips.map((l) => `- ${l}`)].join("\n"),
+    experience: [L.EXPERIENCE, ...memory.experience.map((l) => `- ${l}`)].join(
+      "\n"
+    ),
 
-    credits: ["> CREDITS", ...memory.creditsLines].join("\n"),
+    features: [L.FEATURES, ...memory.features.map((l) => `- ${l}`)].join("\n"),
+
+    tips: [L.TIPS, ...memory.tips.map((l) => `- ${l}`)].join("\n"),
+
+    credits: [L.CREDITS, ...memory.creditsLines].join("\n"),
 
     version: [
-      "> VERSION",
+      L.VERSION,
       memory.versionInfo.title,
       memory.versionInfo.ui,
       memory.versionInfo.server,
     ].join("\n"),
 
-    changelog: ["> CHANGELOG", ...memory.changelog.map((l) => `- ${l}`)].join(
+    changelog: [L.CHANGELOG, ...memory.changelog.map((l) => `- ${l}`)].join(
       "\n"
     ),
 
     faq: [
-      "> FAQ",
+      L.FAQ,
       ...memory.faq.flatMap((qa) => [`Q: ${qa.q}`, `A: ${qa.a}`]),
     ].join("\n"),
 
-    story: ["> STORY", ...memory.story].join("\n"),
+    story: [L.STORY, ...memory.story].join("\n"),
 
     github: [
-      "> GITHUB",
+      L.GITHUB,
       ` - Profile: ${memory.github.profile}`,
       " - Repositories:",
       ...memory.github.repositories.map((r) => `   - ${r}`),
     ].join("\n"),
 
     internship: [
-      "> INTERNSHIP",
+      L.INTERNSHIP,
       ` - Company: ${memory.internship.company}`,
       ` - Duration: ${memory.internship.duration}`,
       ` - Role: ${memory.internship.role}`,
     ].join("\n"),
 
     languages: [
-      "> LANGUAGES",
+      L.LANGUAGES,
       ...memory.languagesList.map((l) => ` - ${l}`),
     ].join("\n"),
 
     technologies: [
-      "> TECHNOLOGIES",
+      L.TECHNOLOGIES,
       ...memory.technologiesList.map((t) => ` - ${t}`),
     ].join("\n"),
 
     education: [
-      "> EDUCATION",
+      L.EDUCATION,
       ...memory.educationList.map((e) => ` - ${e}`),
     ].join("\n"),
 
@@ -148,12 +190,13 @@ function buildStaticCommands() {
 // Handle incoming command
 router.post("/", async (req, res) => {
   console.log("Received command:", req.body);
-  const { input } = req.body;
+  const { input, lang = "en" } = req.body;
 
   if (!input) return res.status(400).json({ error: "No input provided" });
 
   const cmd = input.toLowerCase().trim();
-  const staticCommands = buildStaticCommands();
+  const memory = loadMemory(lang);
+  const staticCommands = buildStaticCommands(memory, lang);
 
   // Check for static command first
   if (staticCommands[cmd]) {
@@ -196,7 +239,7 @@ router.post("/", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone. Context about Luke: ${JSON.stringify(
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone. Answer in language: ${lang}. Context about Luke: ${JSON.stringify(
             memory
           )}`,
         },

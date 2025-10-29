@@ -5,19 +5,43 @@ import BannerReveal from "./components/BannerReveal.jsx";
 import bannerRaw from "./assets/banner.txt?raw";
 import useClock from "./hooks/useClock.js";
 import Prompt from "./components/Prompt.jsx";
-import steps from "./boot/steps.js";
+import getSteps from "./boot/steps.js";
 import { handleLocalCommand } from "./cli/localCommands.jsx";
 import { sendCommand } from "./api/command.js";
 
 // Prevent React Strict Mode from double-running the boot sequence in development
 // This resets on full page refresh, so the sequence still runs every reload.
 let BOOT_SEQ_HAS_RUN = false;
+let PREBOOT_SHOWN = false;
+const SYSTEM_STATUS = {
+  en: "SYSTEM ONLINE. Hello! I'm Luke's CLI assistant. Ask me anything about Luke and his projects, or type 'help' to see commands.",
+  fi: "JÄRJESTELMÄ ONLINE. Hei! Olen Luken CLI-avustaja. Kysy mitä vain Lukeen ja projekteihin liittyen tai kirjoita 'help' nähdäksesi komennot.",
+};
+const PREBOOT_TEXT = {
+  en: {
+    header: "> BOOT MANAGER",
+    select: "> Select Language: [1] EN  [2] FI",
+    hint: "> Type 'en' or 'fi' (or 1/2) to choose. Type 'boot' to start.",
+    helpHeader: "> BOOT HELP",
+    helpSel: "> - Type 'en' or 'fi' (or 1/2) to select language.",
+    helpBoot: "> - Type 'boot' to start the system.",
+  },
+  fi: {
+    header: "> KÄYNNISTYSHALLINTA",
+    select: "> Valitse kieli: [1] EN  [2] FI",
+    hint: "> Kirjoita 'en' tai 'fi' (tai 1/2) valitaksesi. Kirjoita 'boot' käynnistääksesi.",
+    helpHeader: "> KÄYNNISTYSOHJE",
+    helpSel: "> - Kirjoita 'en' tai 'fi' (tai 1/2) valitaksesi kielen.",
+    helpBoot: "> - Kirjoita 'boot' käynnistääksesi järjestelmän.",
+  },
+};
 
 function App() {
-  const [lines, setLines] = useState(["> SYSTEM BOOTING..."]);
-  const [systemStatus] = useState(
-    "SYSTEM ONLINE. Hello There! I am Luke's CLI assistant. I can help you with various tasks and commands about Luke and his projects. Ask me anything! or type 'help' to see available commands. You can also type 'about' to learn more about me."
-  );
+  const [lines, setLines] = useState([]);
+  const [lang, setLang] = useState(() => localStorage.getItem("lang") || "en");
+  const [preBoot, setPreBoot] = useState(true);
+  const [shouldBoot, setShouldBoot] = useState(false);
+
   const [input, setInput] = useState("");
   // history removed; server handles stateless commands and AI fallback
   const [typing, setTyping] = useState(false);
@@ -111,10 +135,18 @@ function App() {
       ]);
     });
 
-  // On mount, run boot sequence: scans -> banner -> SYSTEM ONLINE
+  // Pre-boot menu on mount (guarded against Strict Mode double-effect)
   useEffect(() => {
-    // Guard against Strict Mode's double-invocation in dev without persisting across refreshes
-    if (BOOT_SEQ_HAS_RUN) return;
+    if (PREBOOT_SHOWN) return;
+    PREBOOT_SHOWN = true;
+    const t = PREBOOT_TEXT[lang] || PREBOOT_TEXT.en;
+    setLines((prev) => [...prev, t.header, t.select, t.hint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Boot sequence when user starts it
+  useEffect(() => {
+    if (!shouldBoot || BOOT_SEQ_HAS_RUN) return;
     BOOT_SEQ_HAS_RUN = true;
 
     setTyping(true);
@@ -148,17 +180,16 @@ function App() {
       ]);
     };
 
-    // Sequence runner
     (async () => {
-      // Tiny pause after booting line
-      await new Promise((r) => setTimeout(r, 400));
+      // Tiny pause after pre-boot
+      await new Promise((r) => setTimeout(r, 200));
 
-      // Lots of realistic loading bars
-      for (const [label, duration] of steps) {
+      // Loading bars in selected language
+      for (const [label, duration] of getSteps(lang)) {
         await addProgress(label, duration);
       }
 
-      // Clear all loading lines and boot text
+      // Clear pre-boot and progress lines
       setLines([]);
 
       // Banner then ONLINE
@@ -171,11 +202,13 @@ function App() {
         jitterPct: 0.3,
       });
       await new Promise((r) => setTimeout(r, 250));
-      appendTyped(systemStatus, () => setTyping(false), 30);
+      appendTyped(
+        SYSTEM_STATUS[lang] || SYSTEM_STATUS.en,
+        () => setTyping(false),
+        30
+      );
     })();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [shouldBoot, lang]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -209,6 +242,52 @@ function App() {
     ]);
     // Handle simple local CLI commands without contacting the server
     const lower = message.toLowerCase();
+
+    // Pre-boot handling
+    if (preBoot && !shouldBoot) {
+      if (
+        lower === "reset" ||
+        lower === "nollaa" ||
+        lower === "uudelleenkäynnistä" ||
+        lower === "uudelleenkaynnista"
+      ) {
+        setLines((prev) => [
+          ...prev,
+          lang === "fi" ? "> Käynnistetään uudelleen..." : "> Resetting...",
+        ]);
+        setTimeout(() => window.location.reload(), 200);
+        return;
+      }
+      if (["1", "en", "lang en"].includes(lower)) {
+        setLang("en");
+        localStorage.setItem("lang", "en");
+        setLines((prev) => [...prev, "> Language set: English"]);
+        return;
+      }
+      if (["2", "fi", "lang fi"].includes(lower)) {
+        setLang("fi");
+        localStorage.setItem("lang", "fi");
+        setLines((prev) => [...prev, "> Kieli asetettu: suomi"]);
+        return;
+      }
+      if (lower === "help") {
+        const t = PREBOOT_TEXT[lang] || PREBOOT_TEXT.en;
+        setLines((prev) => [...prev, t.helpHeader, t.helpSel, t.helpBoot]);
+        return;
+      }
+      if (lower === "boot") {
+        setLines((prev) => [...prev, "> Booting..."]);
+        setPreBoot(false);
+        setShouldBoot(true);
+        return;
+      }
+      if (lower === "/glitch") {
+        triggerGlitch();
+        return;
+      }
+      setLines((prev) => [...prev, "> Unknown command in BOOT MANAGER."]);
+      return;
+    }
     const handled = await handleLocalCommand(lower, {
       setLines,
       setMode80,
@@ -219,12 +298,13 @@ function App() {
       showBannerSlow,
       triggerGlitch,
       scrollToBottom: () => scrollToBottom("auto"),
+      lang,
     });
     if (handled) return;
 
     setTyping(true);
     try {
-      const reply = await sendCommand(message);
+      const reply = await sendCommand(message, lang);
       setLines((prev) => [
         ...prev,
         <>

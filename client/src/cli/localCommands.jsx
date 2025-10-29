@@ -11,7 +11,7 @@ import { sendCommand } from "../api/command.js";
 async function typeServer(ctx, cmd, speed = 30) {
   try {
     ctx.setTyping?.(true);
-    const reply = await sendCommand(cmd);
+    const reply = await sendCommand(cmd, ctx.lang);
     const key = `sv-${Date.now()}`;
     ctx.setLines((prev) => [
       ...prev,
@@ -42,49 +42,108 @@ export async function handleLocalCommand(message, ctx) {
     return true;
   }
 
-  // help
+  // help (localized)
   if (lower === "help") {
+    const L = ctx.lang === "fi";
+    const lines = L
+      ? [
+          "Käytettävissä olevat komennot:",
+          "  help            - näytä tämä ohje",
+          "  clear / cls     - tyhjennä näkymä",
+          "  reset | nollaa | uudelleenkäynnistä - päivitä sivu",
+          "  dir / ls        - listaa hakemisto",
+          "  banner          - toista aloitusbanneri",
+          "  scan            - suorita diagnostiikka edistymispalkeilla",
+          "  mask on|off     - ota pikselimaski käyttöön/pois",
+          "  mask toggle     - vaihda pikselimaskin tila",
+          "  mode 80|auto    - rajoita ~80 merkkiin tai palauta",
+          "  about           - mitä tämä sovellus on",
+          "  features        - keskeiset ominaisuudet",
+          "  tips            - vinkkejä ja pikanäppäimiä",
+          "  credits         - tekijät",
+          "  version | ver   - versiotiedot",
+          "  changelog       - viimeisimmät muutokset",
+          "  faq             - usein kysytyt kysymykset",
+          "  story           - tarina",
+          "  /glitch         - visuaalinen häiriö",
+          "  projects        - Luken projektit",
+          "  experience      - Luken kokemus",
+          "  skills          - taidot ja teknologiat",
+          "  github          - Luken GitHub-profiili",
+          "  linkedin        - Luken LinkedIn-profiili",
+          "  internship      - harjoittelun tiedot",
+          "  education       - koulutus",
+          "  commands        - ...",
+        ]
+      : [
+          "Available commands:",
+          "  help            - show this help",
+          "  clear / cls     - clear the screen",
+          "  reset           - refresh the page",
+          "  dir / ls        - list directory",
+          "  banner          - print the boot banner",
+          "  scan            - run diagnostics with progress",
+          "  mask on|off     - enable/disable pixel mask",
+          "  mask toggle     - toggle pixel mask",
+          "  mode 80|auto    - clamp to ~80 columns or restore",
+          "  about           - what this app is",
+          "  features        - key features overview",
+          "  tips            - usage tips and shortcuts",
+          "  credits         - acknowledgements",
+          "  version | ver   - show version info",
+          "  changelog       - latest changes",
+          "  faq             - common questions",
+          "  story           - in-universe lore",
+          "  /glitch         - trigger a visual glitch",
+          "  projects        - list of Luke's projects",
+          "  experience      - overview of Luke's experience",
+          "  skills          - key skills and technologies",
+          "  github          - Luke's GitHub profile",
+          "  linkedin        - Luke's LinkedIn profile",
+          "  internship      - details of Luke's internship",
+          "  education       - overview of Luke's education",
+          "  commands        - ...",
+        ];
+    ctx.setLines((prev) => [...prev, ...lines]);
+    return true;
+  }
+
+  // reset (refresh page) - support FI aliases too
+  if (
+    lower === "reset" ||
+    lower === "nollaa" ||
+    lower === "uudelleenkäynnistä" ||
+    lower === "uudelleenkaynnista"
+  ) {
     ctx.setLines((prev) => [
       ...prev,
-      "Available commands:",
-      "  help            - show this help",
-      "  clear / cls     - clear the screen",
-      "  dir / ls        - list directory",
-      "  banner          - print the boot banner",
-      "  scan            - run diagnostics with progress",
-      "  mask on|off     - enable/disable pixel mask",
-      "  mask toggle     - toggle pixel mask",
-      "  mode 80|auto    - clamp to ~80 columns or restore",
-      "  about           - what this app is",
-      "  features        - key features overview",
-      "  tips            - usage tips and shortcuts",
-      "  credits         - acknowledgements",
-      "  version | ver   - show version info",
-      "  changelog       - latest changes",
-      "  faq             - common questions",
-      "  story           - in-universe lore",
-      "  /glitch         - trigger a visual glitch",
-      "  projects        - list of Luke's projects",
-      "  experience      - overview of Luke's experience",
-      "  skills          - key skills and technologies",
-      "  github          - Luke's GitHub profile",
-      "  linkedin        - Luke's LinkedIn profile",
-      "  internship      - details of Luke's internship",
-      "  education       - overview of Luke's education",
-      "  commands        - ...",
+      ctx.lang === "fi" ? "> Käynnistetään uudelleen..." : "> Resetting...",
     ]);
+    setTimeout(() => {
+      window.location.reload();
+    }, 200);
     return true;
   }
 
   // mask on|off|toggle
   if (lower === "mask on") {
     ctx.setMaskEnabled(true);
-    ctx.setLines((prev) => [...prev, "> Pixel mask enabled."]);
+    ctx.setLines((prev) => [
+      ...prev,
+      ctx.lang === "fi"
+        ? "> Pikselimaskeeraus käytössä."
+        : "> Pixel mask enabled.",
+    ]);
     return true;
   }
   if (lower === "mask off") {
     ctx.setMaskEnabled(false);
-    ctx.setLines((prev) => [...prev, "> Pixel mask disabled."]);
+    ctx.setLines((prev) => [
+      ...prev,
+      ctx.lang === "fi"
+        ? "> Pikselimaskeeraus pois käytöstä."
+        : "> Pixel mask disabled.",
+    ]);
     return true;
   }
   if (lower === "mask toggle") {
@@ -92,7 +151,13 @@ export async function handleLocalCommand(message, ctx) {
     ctx.setMaskEnabled(next);
     ctx.setLines((prev) => [
       ...prev,
-      next ? "> Pixel mask enabled." : "> Pixel mask disabled.",
+      next
+        ? ctx.lang === "fi"
+          ? "> Pikselimaskeeraus käytössä."
+          : "> Pixel mask enabled."
+        : ctx.lang === "fi"
+        ? "> Pikselimaskeeraus pois käytöstä."
+        : "> Pixel mask disabled.",
     ]);
     return true;
   }
@@ -166,15 +231,22 @@ export async function handleLocalCommand(message, ctx) {
   }
 
   if (lower === "education") {
-    //
     return await typeServer(ctx, lower, 30);
   }
 
   // recruiter mode (dedicated backend route)
-  if (lower === "recruiter") {
+  if (
+    lower === "access recruiter" ||
+    lower === "recruiter_mode" ||
+    lower === "recruiter"
+  ) {
     try {
       ctx.setTyping?.(true);
-      const res = await fetch("http://localhost:5000/api/recruiter");
+      const res = await fetch(
+        `http://localhost:5000/api/recruiter?lang=${encodeURIComponent(
+          ctx.lang || "en"
+        )}`
+      );
       const data = await res.json();
       // Normalize message into multiline text if backend used inline separators
       let normalized = String(data.message ?? "");
@@ -249,12 +321,23 @@ export async function handleLocalCommand(message, ctx) {
     const arg = lower.split(/\s+/)[1];
     if (arg === "80") {
       ctx.setMode80(true);
-      ctx.setLines((p) => [...p, "> Mode set to 80 columns."]);
+      ctx.setLines((p) => [
+        ...p,
+        ctx.lang === "fi" ? "> Tila: 80 merkkiä." : "> Mode set to 80 columns.",
+      ]);
     } else if (arg === "auto") {
       ctx.setMode80(false);
-      ctx.setLines((p) => [...p, "> Mode set to auto width."]);
+      ctx.setLines((p) => [
+        ...p,
+        ctx.lang === "fi"
+          ? "> Tila: automaattinen leveys."
+          : "> Mode set to auto width.",
+      ]);
     } else {
-      ctx.setLines((p) => [...p, "> Usage: mode 80|auto"]);
+      ctx.setLines((p) => [
+        ...p,
+        ctx.lang === "fi" ? "> Käyttö: mode 80|auto" : "> Usage: mode 80|auto",
+      ]);
     }
     return true;
   }
@@ -266,24 +349,35 @@ export async function handleLocalCommand(message, ctx) {
       ...prev,
       <Progress
         key={`p1-${keyBase}`}
-        label="scanning..."
+        label={ctx.lang === "fi" ? "skannataan..." : "scanning..."}
         duration={1200}
         onDone={() => {
           ctx.setLines((p2) => [
             ...p2,
             <Progress
               key={`p2-${keyBase}`}
-              label="boot sectors initializing..."
+              label={
+                ctx.lang === "fi"
+                  ? "käynnistyssektorit alustetaan..."
+                  : "boot sectors initializing..."
+              }
               duration={1400}
               onDone={() => {
                 ctx.setLines((p3) => [
                   ...p3,
                   <Progress
                     key={`p3-${keyBase}`}
-                    label="disk check..."
+                    label={
+                      ctx.lang === "fi" ? "levytarkastus..." : "disk check..."
+                    }
                     duration={1600}
                     onDone={() => {
-                      ctx.setLines((p4) => [...p4, "> Diagnostics complete."]);
+                      ctx.setLines((p4) => [
+                        ...p4,
+                        ctx.lang === "fi"
+                          ? "> Diagnostiikka valmis."
+                          : "> Diagnostics complete.",
+                      ]);
                     }}
                   />,
                 ]);

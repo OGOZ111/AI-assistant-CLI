@@ -1,5 +1,5 @@
 // Boot sequence steps: [label, durationMs]
-const steps = [
+const stepsEn = [
   ["memory check", 700],
   ["I/O controller init", 900],
   ["device enumeration", 900],
@@ -16,4 +16,25 @@ const steps = [
   ["telemetry muted", 650],
 ];
 
-export default steps;
+const stepsFi = [
+  ["muistin tarkistus", 700],
+  ["I/O-ohjaimen alustus", 900],
+  ["laitteiden tunnistus", 900],
+  ["ytimen moduulit", 1000],
+  ["verkkokättely", 950],
+  ["tiedostojärjestelmän eheys", 1050],
+  ["entropia-altaan lämmitys", 800],
+  ["RTC-synkronointi", 750],
+  ["GPU POST", 850],
+  ["ääniväylä", 700],
+  ["syöttölaitteet", 750],
+  ["tietoturvakäytäntö", 900],
+  ["palveluiden käynnistys", 1000],
+  ["telemetria mykistetty", 650],
+];
+
+export function getSteps(lang = "en") {
+  return lang === "fi" ? stepsFi : stepsEn;
+}
+
+export default getSteps;
