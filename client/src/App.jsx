@@ -497,7 +497,6 @@ function App() {
               onTick={() => scrollToBottom("auto")}
               onDone={() => {
                 setTyping(false);
-                if (Math.random() < 0.08) triggerGlitch(1200);
               }}
             />
           </span>
