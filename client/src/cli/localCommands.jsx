@@ -55,6 +55,7 @@ async function typeServer(ctx, cmd, speed = 30) {
 // --- Main local command handler ---
 export async function handleLocalCommand(message, ctx) {
   const lower = message.toLowerCase().trim();
+  const tokens = lower.split(/\s+/).filter(Boolean);
 
   // helper to render help lines for a given language
   const getHelpLines = (lang) => {
@@ -66,8 +67,8 @@ export async function handleLocalCommand(message, ctx) {
           "  tyhjennä        - tyhjennä näkymä (alias: clear / cls)",
           "  nollaa          - käynnistä sovellus uudelleen (alias: reset / uudelleenkäynnistä)",
           "  hakemisto       - listaa hakemiston sisältö (alias: dir / ls)",
-          "  tila            - näytä palvelimen tila (status)",
-          "  ping            - mitattu viive (ms)",
+          "  tila [--watch]  - näytä palvelimen tila (päivittää jatkuvasti)",
+          "  ping [--watch]  - mitattu viive (ms), valinnainen seuranta",
           "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
           "  skannaa         - suorita diagnostiikka edistymispalkeilla",
@@ -98,8 +99,8 @@ export async function handleLocalCommand(message, ctx) {
           "  clear / cls     - clear the screen",
           "  reset           - refresh the page",
           "  dir / ls        - list directory",
-          "  status          - show server status",
-          "  ping            - measure latency",
+          "  status [--watch]- show server status (auto-refresh)",
+          "  ping [--watch]  - measure latency, optional watch",
           "  lang en|fi      - switch language on the fly",
           "  banner          - print the boot banner",
           "  scan            - run diagnostics with progress",
@@ -270,88 +271,191 @@ export async function handleLocalCommand(message, ctx) {
   }
 
   // status: show emulated server status (try backend, fallback to local)
-  if (lower === "status") {
+  if (lower === "status" || lower === "status --watch") {
     try {
-      ctx.setTyping?.(true);
-      const started = performance.now();
-      const res = await fetch("http://localhost:5000/api/status");
-      const ms = Math.max(1, Math.round(performance.now() - started));
-      const data = await res.json();
-      const load = Math.min(
-        99,
-        Math.max(
-          1,
-          Math.round((Date.now() % 100000) / 1000 + (Math.random() * 10 - 5))
-        )
-      );
-      const lines = [
-        "> STATUS",
-        ` Server: ${data.online ? "ONLINE" : "OFFLINE"} (${ms}ms)`,
-        ` Environment: ${data.env}`,
-        ` Languages: ${(data.langs || ["en"]).join(", ")}`,
-        ` AI Presence: ${data.hasAI ? "Detected" : "Not detected"}`,
-        ` Load: ${String(load).padStart(2, " ")}%`,
-        ` Time: ${new Date(data.now || Date.now()).toLocaleString()}`,
-      ].join("\n");
-      const key = `st-${Date.now()}`;
-      ctx.setLines((prev) => [
-        ...prev,
-        <span key={key} className="whitespace-pre-wrap">
-          <Typewriter
-            text={lines}
-            speed={24}
-            onTick={() => ctx.scrollToBottom?.("auto")}
-            onDone={() => ctx.setTyping?.(false)}
-          />
-        </span>,
-      ]);
+      const runOnce = async () => {
+        const started = performance.now();
+        const res = await fetch("http://localhost:5000/api/status");
+        const ms = Math.max(1, Math.round(performance.now() - started));
+        const data = await res.json();
+        const load = Math.min(
+          99,
+          Math.max(
+            1,
+            Math.round((Date.now() % 100000) / 1000 + (Math.random() * 10 - 5))
+          )
+        );
+        const lines = [
+          "> STATUS",
+          ` Server: ${data.online ? "ONLINE" : "OFFLINE"} (${ms}ms)`,
+          ` Environment: ${data.env}`,
+          ` Languages: ${(data.langs || ["en"]).join(", ")}`,
+          ` AI Presence: ${data.hasAI ? "Detected" : "Not detected"}`,
+          ` Load: ${String(load).padStart(2, " ")}%`,
+          ` Time: ${new Date(data.now || Date.now()).toLocaleString()}`,
+        ].join("\n");
+        const key = `st-${Date.now()}`;
+        ctx.setLines((prev) => [
+          ...prev,
+          <span key={key} className="whitespace-pre-wrap">
+            {lines}
+          </span>,
+        ]);
+      };
+      if (tokens.includes("--watch")) {
+        // limited watch: update 6 times ~ every 2s
+        ctx.setLines((prev) => [
+          ...prev,
+          "> STATUS watch started (6 updates)...",
+        ]);
+        for (let i = 0; i < 6; i++) {
+          await runOnce();
+          if (i < 5) await new Promise((r) => setTimeout(r, 2000));
+        }
+        ctx.setLines((prev) => [...prev, "> STATUS watch complete."]);
+      } else {
+        ctx.setTyping?.(true);
+        const started = performance.now();
+        const res = await fetch("http://localhost:5000/api/status");
+        const ms = Math.max(1, Math.round(performance.now() - started));
+        const data = await res.json();
+        const load = Math.min(
+          99,
+          Math.max(
+            1,
+            Math.round((Date.now() % 100000) / 1000 + (Math.random() * 10 - 5))
+          )
+        );
+        const lines = [
+          "> STATUS",
+          ` Server: ${data.online ? "ONLINE" : "OFFLINE"} (${ms}ms)`,
+          ` Environment: ${data.env}`,
+          ` Languages: ${(data.langs || ["en"]).join(", ")}`,
+          ` AI Presence: ${data.hasAI ? "Detected" : "Not detected"}`,
+          ` Load: ${String(load).padStart(2, " ")}%`,
+          ` Time: ${new Date(data.now || Date.now()).toLocaleString()}`,
+        ].join("\n");
+        const key = `st-${Date.now()}`;
+        ctx.setLines((prev) => [
+          ...prev,
+          <span key={key} className="whitespace-pre-wrap">
+            <Typewriter
+              text={lines}
+              speed={24}
+              onTick={() => ctx.scrollToBottom?.("auto")}
+              onDone={() => ctx.setTyping?.(false)}
+            />
+          </span>,
+        ]);
+      }
     } catch {
       // Fallback to local emulation
-      const jitter = Math.round(40 + Math.random() * 60);
-      const load = Math.round(20 + Math.random() * 55);
-      const lines = [
-        "> STATUS",
-        ` Server: ONLINE (~${jitter}ms)`,
-        ` Environment: emulated`,
-        ` Languages: en, fi`,
-        ` AI Presence: Unknown`,
-        ` Load: ${load}%`,
-        ` Time: ${new Date().toLocaleString()}`,
-      ].join("\n");
-      const key = `stl-${Date.now()}`;
-      ctx.setLines((prev) => [
-        ...prev,
-        <span key={key} className="whitespace-pre-wrap">
-          <Typewriter
-            text={lines}
-            speed={24}
-            onTick={() => ctx.scrollToBottom?.("auto")}
-          />
-        </span>,
-      ]);
-      ctx.setTyping?.(false);
+      const runLocalOnce = () => {
+        const jitter = Math.round(40 + Math.random() * 60);
+        const load = Math.round(20 + Math.random() * 55);
+        const lines = [
+          "> STATUS",
+          ` Server: ONLINE (~${jitter}ms)`,
+          ` Environment: emulated`,
+          ` Languages: en, fi`,
+          ` AI Presence: Unknown`,
+          ` Load: ${load}%`,
+          ` Time: ${new Date().toLocaleString()}`,
+        ].join("\n");
+        const key = `stl-${Date.now()}`;
+        ctx.setLines((prev) => [
+          ...prev,
+          <span key={key} className="whitespace-pre-wrap">
+            {lines}
+          </span>,
+        ]);
+      };
+      if (tokens.includes("--watch")) {
+        ctx.setLines((prev) => [
+          ...prev,
+          "> STATUS watch started (emulated, 6 updates)...",
+        ]);
+        for (let i = 0; i < 6; i++) {
+          runLocalOnce();
+          if (i < 5) await new Promise((r) => setTimeout(r, 2000));
+        }
+        ctx.setLines((prev) => [...prev, "> STATUS watch complete."]);
+      } else {
+        const jitter = Math.round(40 + Math.random() * 60);
+        const load = Math.round(20 + Math.random() * 55);
+        const lines = [
+          "> STATUS",
+          ` Server: ONLINE (~${jitter}ms)`,
+          ` Environment: emulated`,
+          ` Languages: en, fi`,
+          ` AI Presence: Unknown`,
+          ` Load: ${load}%`,
+          ` Time: ${new Date().toLocaleString()}`,
+        ].join("\n");
+        const key = `stl-${Date.now()}`;
+        ctx.setLines((prev) => [
+          ...prev,
+          <span key={key} className="whitespace-pre-wrap">
+            <Typewriter
+              text={lines}
+              speed={24}
+              onTick={() => ctx.scrollToBottom?.("auto")}
+            />
+          </span>,
+        ]);
+        ctx.setTyping?.(false);
+      }
     }
     return true;
   }
 
   // ping: measure latency to backend; fallback to emulated
-  if (lower === "ping") {
+  if (lower === "ping" || lower === "ping --watch") {
     try {
-      const started = performance.now();
-      const res = await fetch("http://localhost:5000/api/status/ping");
-      await res.json();
-      const ms = Math.max(1, Math.round(performance.now() - started));
-      // update history and render a tiny sparkline
-      PING_HISTORY.push(ms);
-      if (PING_HISTORY.length > PING_HISTORY_MAX) PING_HISTORY.shift();
-      const spark = renderSparkline(PING_HISTORY);
-      ctx.setLines((prev) => [...prev, `> PING ${ms}ms  ${spark}`]);
+      const doPing = async () => {
+        const started = performance.now();
+        const res = await fetch("http://localhost:5000/api/status/ping");
+        await res.json();
+        const ms = Math.max(1, Math.round(performance.now() - started));
+        PING_HISTORY.push(ms);
+        if (PING_HISTORY.length > PING_HISTORY_MAX) PING_HISTORY.shift();
+        const spark = renderSparkline(PING_HISTORY);
+        ctx.setLines((prev) => [...prev, `> PING ${ms}ms  ${spark}`]);
+      };
+      if (tokens.includes("--watch")) {
+        ctx.setLines((prev) => [...prev, "> PING watch started (10 pings)..."]);
+        for (let i = 0; i < 10; i++) {
+          await doPing();
+          if (i < 9) await new Promise((r) => setTimeout(r, 1000));
+        }
+        ctx.setLines((prev) => [...prev, "> PING watch complete."]);
+      } else {
+        await doPing();
+      }
     } catch {
-      const ms = Math.round(40 + Math.random() * 120);
-      PING_HISTORY.push(ms);
-      if (PING_HISTORY.length > PING_HISTORY_MAX) PING_HISTORY.shift();
-      const spark = renderSparkline(PING_HISTORY);
-      ctx.setLines((prev) => [...prev, `> PING ~${ms}ms (emulated)  ${spark}`]);
+      const doLocalPing = () => {
+        const ms = Math.round(40 + Math.random() * 120);
+        PING_HISTORY.push(ms);
+        if (PING_HISTORY.length > PING_HISTORY_MAX) PING_HISTORY.shift();
+        const spark = renderSparkline(PING_HISTORY);
+        ctx.setLines((prev) => [
+          ...prev,
+          `> PING ~${ms}ms (emulated)  ${spark}`,
+        ]);
+      };
+      if (tokens.includes("--watch")) {
+        ctx.setLines((prev) => [
+          ...prev,
+          "> PING watch started (emulated, 10 pings)...",
+        ]);
+        for (let i = 0; i < 10; i++) {
+          doLocalPing();
+          if (i < 9) await new Promise((r) => setTimeout(r, 1000));
+        }
+        ctx.setLines((prev) => [...prev, "> PING watch complete."]);
+      } else {
+        doLocalPing();
+      }
     }
     return true;
   }
