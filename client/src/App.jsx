@@ -233,7 +233,7 @@ function App() {
       await new Promise((r) => setTimeout(r, 200));
 
       // Loading bars in selected language
-  const activeLang = bootLangRef.current || "en";
+      const activeLang = bootLangRef.current || "en";
       for (const [label, duration] of getSteps(activeLang)) {
         await addProgress(label, duration);
       }

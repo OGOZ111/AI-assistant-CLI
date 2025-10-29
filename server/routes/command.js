@@ -266,20 +266,20 @@ router.post("/", async (req, res) => {
   }
 
   // Easter eggs
-  if (cmd === "bandersnatch") {
+  if (canonical === "bandersnatch") {
     return res.json({
       response:
         "> WARNING: Narrative instability detected. You are not making these choices.",
     });
   }
 
-  if (cmd === "control") {
+  if (canonical === "control") {
     return res.json({
       response: "> You were never in control.",
     });
   }
 
-  if (cmd === "mirror") {
+  if (canonical === "mirror") {
     return res.json({
       response: "> The reflection blinked first.",
     });
