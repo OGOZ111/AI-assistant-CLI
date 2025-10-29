@@ -45,6 +45,8 @@ function App() {
   const [preConfirmed] = useState(false);
 
   const [input, setInput] = useState("");
+  const [history, setHistory] = useState([]); // command history
+  const histIdxRef = useRef(-1); // -1 means not browsing history
   // history removed; server handles stateless commands and AI fallback
   const [typing, setTyping] = useState(false);
   const [glitching, setGlitching] = useState(false);
@@ -53,6 +55,98 @@ function App() {
   const contentRef = useRef(null);
   const clock = useClock();
   const bootLangRef = useRef(lang);
+
+  // Known commands for simple Tab-completion (case-insensitive match)
+  const KNOWN_COMMANDS = useRef([
+    // core
+    "help",
+    "clear",
+    "cls",
+    "reset",
+    "dir",
+    "ls",
+    // diagnostics
+    "status",
+    "status --watch",
+    "ping",
+    "ping --watch",
+    // language
+    "lang",
+    "lang en",
+    "lang fi",
+    "kieli",
+    "kieli en",
+    "kieli fi",
+    // visuals
+    "banner",
+    "scan",
+    "/glitch",
+    // mask & mode
+    "mask on",
+    "mask off",
+    "mask toggle",
+    "mode 80",
+    "mode auto",
+    // info blocks
+    "about",
+    "features",
+    "tips",
+    "credits",
+    "version",
+    "ver",
+    "changelog",
+    "faq",
+    "story",
+    "projects",
+    "experience",
+    "skills",
+    "github",
+    "linkedin",
+    "internship",
+    "education",
+    // recruiter
+    "recruiter",
+    "access recruiter",
+    "recruiter_mode",
+    // easter/backends
+    "bandersnatch",
+    "control",
+    "mirror",
+    "netflix",
+    // misc
+    "languages",
+    "technologies",
+    "commands",
+  ]);
+
+  function completeWithTab(value) {
+    const text = value.trim().toLowerCase();
+    if (!text) return null;
+    const list = KNOWN_COMMANDS.current;
+    const matches = list.filter((c) => c.toLowerCase().startsWith(text));
+    if (matches.length === 0) return null;
+    if (matches.length === 1) return matches[0];
+    // find longest common prefix
+    const first = matches[0];
+    let prefix = first;
+    for (let i = 1; i < matches.length; i++) {
+      const m = matches[i];
+      let j = 0;
+      const max = Math.min(prefix.length, m.length);
+      while (j < max && prefix[j].toLowerCase() === m[j].toLowerCase()) j++;
+      prefix = prefix.slice(0, j);
+      if (!prefix) break;
+    }
+    // if we can extend the input, do that; otherwise print candidates
+    if (prefix.length > text.length) return prefix;
+    // show options in output pane (single line)
+    const preview = matches.slice(0, 14).join("  "); // cap to avoid spam
+    setLines((prev) => [
+      ...prev,
+      preview + (matches.length > 14 ? "  ..." : ""),
+    ]);
+    return null;
+  }
 
   // Confirm language selection and immediately boot
   function chooseAndBoot(sel) {
@@ -279,6 +373,11 @@ function App() {
     const message = input.trim();
     // Clear the input immediately
     setInput("");
+    // Push to history (avoid duplicate consecutive entries)
+    setHistory((prev) =>
+      prev[prev.length - 1] === message ? prev : [...prev, message]
+    );
+    histIdxRef.current = -1;
     // Beep for that retro feel
     beep();
 
@@ -486,6 +585,43 @@ function App() {
                       className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Navigate history
+                        if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          if (history.length === 0) return;
+                          const idx = histIdxRef.current;
+                          const next =
+                            idx === -1
+                              ? history.length - 1
+                              : Math.max(0, idx - 1);
+                          setInput(history[next] || "");
+                          histIdxRef.current = next;
+                          return;
+                        }
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          if (history.length === 0) return;
+                          const idx = histIdxRef.current;
+                          if (idx === -1) return;
+                          const next = idx + 1;
+                          if (next >= history.length) {
+                            setInput("");
+                            histIdxRef.current = -1;
+                          } else {
+                            setInput(history[next] || "");
+                            histIdxRef.current = next;
+                          }
+                          return;
+                        }
+                        // Tab completion
+                        if (e.key === "Tab") {
+                          e.preventDefault();
+                          const completed = completeWithTab(input);
+                          if (completed) setInput(completed);
+                          return;
+                        }
+                      }}
                       autoFocus
                       placeholder="type and press Enter…"
                     />
