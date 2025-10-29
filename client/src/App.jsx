@@ -467,7 +467,7 @@ function App() {
       setLines((prev) => [...prev, "> Unknown command in BOOT MANAGER."]);
       return;
     }
-    const handled = await handleLocalCommand(lower, {
+    const handled = await handleLocalCommand(message, {
       setLines,
       setMode80,
       setMaskEnabled,

@@ -69,6 +69,8 @@ export async function handleLocalCommand(message, ctx) {
           "  hakemisto       - listaa hakemiston sisältö (alias: dir / ls)",
           "  tila [--watch]  - näytä palvelimen tila (päivittää jatkuvasti)",
           "  ping [--watch]  - mitattu viive (ms), valinnainen seuranta",
+          "  export          - vie istunnon teksti (leikepöytä + .md)",
+          "  dev help        - kehittäjäkomennot (vain admin)",
           "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
           "  export          - vie istunnon teksti (leikepöytä + .md)",
@@ -102,6 +104,8 @@ export async function handleLocalCommand(message, ctx) {
           "  dir / ls        - list directory",
           "  status [--watch]- show server status (auto-refresh)",
           "  ping [--watch]  - measure latency, optional watch",
+          "  export          - export transcript (clipboard + .md)",
+          "  dev help        - developer commands (admin-only)",
           "  lang en|fi      - switch language on the fly",
           "  banner          - print the boot banner",
           "  export          - export transcript (clipboard + .md)",
@@ -458,6 +462,125 @@ export async function handleLocalCommand(message, ctx) {
       } else {
         doLocalPing();
       }
+    }
+    return true;
+  }
+
+  // --- DEV COMMANDS (admin-only via ADMIN_TOKEN) ---
+  if (lower === "dev" || lower === "dev help") {
+    const lines = [
+      "> DEV",
+      " dev login <token>     - store admin token for this browser",
+      " dev logout            - remove stored admin token",
+      " dev ingest <text>     - embed and insert a text chunk into RAG DB",
+      " dev ingest-json {...} - JSON: { items: [{ content: string }] }",
+    ];
+    ctx.setLines((prev) => [...prev, ...lines]);
+    return true;
+  }
+  if (lower.startsWith("dev login ")) {
+    const token = message.slice("dev login ".length).trim();
+    if (!token) {
+      ctx.setLines((p) => [...p, "> Usage: dev login <token>"]);
+      return true;
+    }
+    try {
+      localStorage.setItem("adminToken", token);
+      ctx.setLines((p) => [...p, "> Admin token saved (browser-local)."]);
+    } catch {
+      ctx.setLines((p) => [...p, "> Failed to save token to localStorage."]);
+    }
+    return true;
+  }
+  if (lower === "dev logout") {
+    try {
+      localStorage.removeItem("adminToken");
+    } catch {
+      /* ignore */
+    }
+    ctx.setLines((p) => [...p, "> Admin token cleared."]);
+    return true;
+  }
+  if (lower.startsWith("dev ingest-json ")) {
+    let payload;
+    try {
+      const json = message.slice("dev ingest-json ".length);
+      payload = JSON.parse(json);
+    } catch {
+      ctx.setLines((p) => [...p, "> Invalid JSON. Expected { items: [...] }."]);
+      return true;
+    }
+    const token = (() => {
+      try {
+        return localStorage.getItem("adminToken");
+      } catch {
+        return null;
+      }
+    })();
+    if (!token) {
+      ctx.setLines((p) => [
+        ...p,
+        "> Missing admin token. Use: dev login <token>",
+      ]);
+      return true;
+    }
+    try {
+      const res = await fetch("http://localhost:5000/api/rag/ingest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "ingest failed");
+      ctx.setLines((p) => [
+        ...p,
+        `> Ingested ${data.inserted ?? "?"} items into ${data.table}.`,
+      ]);
+    } catch (e) {
+      ctx.setLines((p) => [...p, `> Ingest error: ${e?.message || e}`]);
+    }
+    return true;
+  }
+  if (lower.startsWith("dev ingest ")) {
+    const text = message.slice("dev ingest ".length).trim();
+    if (!text) {
+      ctx.setLines((p) => [...p, "> Usage: dev ingest <text>"]);
+      return true;
+    }
+    const token = (() => {
+      try {
+        return localStorage.getItem("adminToken");
+      } catch {
+        return null;
+      }
+    })();
+    if (!token) {
+      ctx.setLines((p) => [
+        ...p,
+        "> Missing admin token. Use: dev login <token>",
+      ]);
+      return true;
+    }
+    try {
+      const res = await fetch("http://localhost:5000/api/rag/ingest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": token,
+        },
+        body: JSON.stringify({ items: [{ content: text }] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "ingest failed");
+      ctx.setLines((p) => [
+        ...p,
+        `> Ingested ${data.inserted ?? "?"} item into ${data.table}.`,
+      ]);
+    } catch (e) {
+      ctx.setLines((p) => [...p, `> Ingest error: ${e?.message || e}`]);
     }
     return true;
   }

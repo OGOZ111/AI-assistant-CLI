@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import OpenAI from "openai";
+import { getSupabase } from "../config/connectDB.js";
 
 const router = express.Router();
 
@@ -310,14 +311,53 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    // RAG retrieval: optionally fetch top chunks from Supabase if configured
+    let ragContext = "";
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        const emb = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: input,
+        });
+        const queryEmbedding = emb.data[0].embedding;
+        // Try match_documents first; fallback to match_kb_chunks
+        let rpc = await supabase.rpc("match_documents", {
+          query_embedding: queryEmbedding,
+          match_count: 4,
+          min_similarity: 0.5,
+        });
+        if (rpc.error) {
+          rpc = await supabase.rpc("match_kb_chunks", {
+            query_embedding: queryEmbedding,
+            match_count: 4,
+            min_similarity: 0.5,
+          });
+        }
+        if (!rpc.error && Array.isArray(rpc.data) && rpc.data.length) {
+          ragContext = rpc.data
+            .map((r, i) => `[#${i + 1}] ${r.content}`)
+            .join("\n\n");
+        }
+      }
+    } catch (e) {
+      // RAG is optional; proceed quietly if unavailable
+    }
+
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 400,
+      presence_penalty: 0,
+      frequency_penalty: 0,
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone similar to the Bandersnatch episode of Black Mirror. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}. Context about Luke: ${JSON.stringify(
-            memory
-          )}`,
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone similar to the Bandersnatch episode of Black Mirror. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
+
+Static context about Luke (curated): ${JSON.stringify(memory)}
+
+Retrieved knowledge base snippets (may be empty):\n${ragContext}`,
         },
         {
           role: "user",

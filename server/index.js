@@ -5,6 +5,7 @@ import commandRouter from "./routes/command.js";
 import recruiterRouter from "./routes/recruiter.js";
 import statusRouter from "./routes/status.js";
 import { initSupabase, verifySupabaseConnection } from "./config/connectDB.js";
+import ragRouter from "./routes/rag.js";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use("/api/command", commandRouter);
 app.use("/api/recruiter", recruiterRouter);
 app.use("/api/status", statusRouter);
+app.use("/api/rag", ragRouter);
 
 const PORT = process.env.PORT || 5000;
 
