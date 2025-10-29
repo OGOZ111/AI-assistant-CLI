@@ -29,6 +29,64 @@ function getOpenAI() {
   }
 }
 
+// Map localized aliases to canonical command keys
+const FI_ALIASES = {
+  about: ["tietoa"],
+  projects: ["projektit"],
+  skills: ["taidot"],
+  experience: ["kokemus"],
+  features: ["ominaisuudet"],
+  tips: ["vinkit"],
+  credits: ["tekijät", "krediitit"],
+  version: ["versio", "ver"],
+  changelog: ["muutokset"],
+  faq: ["ukk", "kysymykset"],
+  story: ["tarina"],
+  github: ["github"],
+  internship: ["harjoittelu"],
+  languages: ["kielet"],
+  technologies: ["teknologiat"],
+  education: ["koulutus"],
+  dir: ["hakemisto"],
+  ls: ["lista"],
+  commands: ["komennot"],
+};
+
+function resolveCanonicalCommand(cmd) {
+  // First, if it's already a known canonical key, return it
+  const canonicalKeys = [
+    "about",
+    "projects",
+    "skills",
+    "experience",
+    "features",
+    "tips",
+    "credits",
+    "version",
+    "changelog",
+    "faq",
+    "story",
+    "github",
+    "internship",
+    "languages",
+    "technologies",
+    "education",
+    "dir",
+    "ls",
+    "commands",
+    "bandersnatch",
+    "control",
+    "mirror",
+  ];
+  if (canonicalKeys.includes(cmd))
+    return { canonical: cmd, inferredLang: null };
+
+  for (const [canonical, aliases] of Object.entries(FI_ALIASES)) {
+    if (aliases.includes(cmd)) return { canonical, inferredLang: "fi" };
+  }
+  return { canonical: cmd, inferredLang: null };
+}
+
 // Predefined static commands
 function buildStaticCommands(memory, lang = "en") {
   const now = new Date();
@@ -190,18 +248,21 @@ function buildStaticCommands(memory, lang = "en") {
 // Handle incoming command
 router.post("/", async (req, res) => {
   console.log("Received command:", req.body);
-  const { input, lang = "en" } = req.body;
+  const { input } = req.body;
+  const langRaw = req.body.lang;
 
   if (!input) return res.status(400).json({ error: "No input provided" });
 
-  const cmd = input.toLowerCase().trim();
-  const memory = loadMemory(lang);
-  const staticCommands = buildStaticCommands(memory, lang);
+  const rawCmd = input.toLowerCase().trim();
+  const { canonical, inferredLang } = resolveCanonicalCommand(rawCmd);
+  const useLang = langRaw || inferredLang || "en";
+  const memory = loadMemory(useLang);
+  const staticCommands = buildStaticCommands(memory, useLang);
 
   // Check for static command first
-  if (staticCommands[cmd]) {
-    console.log("Handled static command:", cmd);
-    return res.json({ response: staticCommands[cmd] });
+  if (staticCommands[canonical]) {
+    console.log("Handled static command:", canonical, "(lang:", useLang, ")");
+    return res.json({ response: staticCommands[canonical] });
   }
 
   // Easter eggs
@@ -239,7 +300,7 @@ router.post("/", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone. Answer in language: ${lang}. Context about Luke: ${JSON.stringify(
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone. Answer in language: ${useLang}. Context about Luke: ${JSON.stringify(
             memory
           )}`,
         },

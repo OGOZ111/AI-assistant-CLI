@@ -20,19 +20,19 @@ const SYSTEM_STATUS = {
 const PREBOOT_TEXT = {
   en: {
     header: "> BOOT MANAGER",
-    select: "> Select Language: [1] EN  [2] FI",
-    hint: "> Type 'en' or 'fi' (or 1/2) to choose. Type 'boot' to start.",
+    select: "> Select Language: [ENGLISH]  [SUOMEKSI]",
+    hint: "> Use arrow keys to choose, then press Enter to confirm. Press Enter again to boot.",
     helpHeader: "> BOOT HELP",
-    helpSel: "> - Type 'en' or 'fi' (or 1/2) to select language.",
-    helpBoot: "> - Type 'boot' to start the system.",
+    helpSel: "> - Use arrow keys to select language, then press Enter.",
+    helpBoot: "> - After confirming language, press Enter to boot.",
   },
   fi: {
     header: "> KÄYNNISTYSHALLINTA",
-    select: "> Valitse kieli: [1] EN  [2] FI",
-    hint: "> Kirjoita 'en' tai 'fi' (tai 1/2) valitaksesi. Kirjoita 'boot' käynnistääksesi.",
+    select: "> Valitse kieli: [ENGLISH]  [SUOMEKSI]",
+    hint: "> Valitse nuolinäppäimillä ja vahvista Enterillä. Paina Enter uudelleen käynnistääksesi.",
     helpHeader: "> KÄYNNISTYSOHJE",
-    helpSel: "> - Kirjoita 'en' tai 'fi' (tai 1/2) valitaksesi kielen.",
-    helpBoot: "> - Kirjoita 'boot' käynnistääksesi järjestelmän.",
+    helpSel: "> - Valitse nuolinäppäimillä kieli ja vahvista Enterillä.",
+    helpBoot: "> - Kielen vahvistuksen jälkeen paina Enter käynnistääksesi.",
   },
 };
 
@@ -41,6 +41,8 @@ function App() {
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "en");
   const [preBoot, setPreBoot] = useState(true);
   const [shouldBoot, setShouldBoot] = useState(false);
+  const [preSel, setPreSel] = useState("en");
+  const [preConfirmed] = useState(false);
 
   const [input, setInput] = useState("");
   // history removed; server handles stateless commands and AI fallback
@@ -50,6 +52,20 @@ function App() {
   const [mode80, setMode80] = useState(false);
   const contentRef = useRef(null);
   const clock = useClock();
+  const bootLangRef = useRef(lang);
+
+  // Confirm language selection and immediately boot
+  function chooseAndBoot(sel) {
+    setPreSel(sel);
+    setLang(sel);
+    try {
+      localStorage.setItem("lang", sel);
+    } catch {
+      // ignore persistence errors
+    }
+    setPreBoot(false);
+    setShouldBoot(true);
+  }
 
   function scrollToBottom(behavior = "auto") {
     const el = contentRef.current;
@@ -139,10 +155,42 @@ function App() {
   useEffect(() => {
     if (PREBOOT_SHOWN) return;
     PREBOOT_SHOWN = true;
-    const t = PREBOOT_TEXT[lang] || PREBOOT_TEXT.en;
-    setLines((prev) => [...prev, t.header, t.select, t.hint]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Minimal pre-boot: show only the selector overlay (no initial lines)
+    setLines((prev) => prev);
   }, []);
+
+  // Keyboard handling for pre-boot language selection and boot
+  useEffect(() => {
+    if (!preBoot || shouldBoot) return;
+    const onKeyDown = (e) => {
+      const key = e.key;
+      if (
+        ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "Enter"].includes(
+          key
+        )
+      ) {
+        e.preventDefault();
+      }
+      if (key === "ArrowLeft" || key === "ArrowUp") {
+        setPreSel("en");
+      } else if (key === "ArrowRight" || key === "ArrowDown") {
+        setPreSel("fi");
+      } else if (key === "Enter") {
+        // Confirm language and immediately boot
+        bootLangRef.current = preSel;
+        setLang(preSel);
+        try {
+          localStorage.setItem("lang", preSel);
+        } catch {
+          // ignore persistence errors
+        }
+        setPreBoot(false);
+        setShouldBoot(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [preBoot, shouldBoot, preSel, lang]);
 
   // Boot sequence when user starts it
   useEffect(() => {
@@ -185,7 +233,8 @@ function App() {
       await new Promise((r) => setTimeout(r, 200));
 
       // Loading bars in selected language
-      for (const [label, duration] of getSteps(lang)) {
+  const activeLang = bootLangRef.current || "en";
+      for (const [label, duration] of getSteps(activeLang)) {
         await addProgress(label, duration);
       }
 
@@ -203,12 +252,12 @@ function App() {
       });
       await new Promise((r) => setTimeout(r, 250));
       appendTyped(
-        SYSTEM_STATUS[lang] || SYSTEM_STATUS.en,
+        SYSTEM_STATUS[activeLang] || SYSTEM_STATUS.en,
         () => setTyping(false),
         30
       );
     })();
-  }, [shouldBoot, lang]);
+  }, [shouldBoot]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -258,13 +307,13 @@ function App() {
         setTimeout(() => window.location.reload(), 200);
         return;
       }
-      if (["1", "en", "lang en"].includes(lower)) {
+      if (["1", "en", "lang en", "kieli en"].includes(lower)) {
         setLang("en");
         localStorage.setItem("lang", "en");
         setLines((prev) => [...prev, "> Language set: English"]);
         return;
       }
-      if (["2", "fi", "lang fi"].includes(lower)) {
+      if (["2", "fi", "lang fi", "kieli fi"].includes(lower)) {
         setLang("fi");
         localStorage.setItem("lang", "fi");
         setLines((prev) => [...prev, "> Kieli asetettu: suomi"]);
@@ -293,6 +342,7 @@ function App() {
       setMode80,
       setMaskEnabled,
       maskEnabled,
+      setLang,
       appendBlock,
       setTyping,
       showBannerSlow,
@@ -364,29 +414,85 @@ function App() {
           {/* Apply glitch only to output lines, not the whole window */}
           <div className={mode80 ? "mode-80" : undefined}>
             <div className="glitch-target">
+              {preBoot && !shouldBoot && (
+                <div className="mb-2">
+                  <div>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => chooseAndBoot("en")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          chooseAndBoot("en");
+                      }}
+                      className={
+                        (preSel === "en"
+                          ? "underline text-green-200 pulse-soft"
+                          : "opacity-50") +
+                        " cursor-pointer select-none focus:outline-none"
+                      }
+                    >
+                      [ENGLISH]
+                    </span>
+                    <span> </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => chooseAndBoot("fi")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          chooseAndBoot("fi");
+                      }}
+                      className={
+                        (preSel === "fi"
+                          ? "underline text-green-200 pulse-soft"
+                          : "opacity-50") +
+                        " cursor-pointer select-none focus:outline-none"
+                      }
+                    >
+                      [SUOMEKSI]
+                    </span>
+                  </div>
+                  {!preConfirmed ? (
+                    <div>
+                      {
+                        "Press Enter to Select Language. Valitse kieli painamalla Enter-painiketta."
+                      }
+                    </div>
+                  ) : (
+                    <div>
+                      {lang === "fi"
+                        ? "Paina Enter käynnistääksesi."
+                        : "Press Enter to boot."}
+                    </div>
+                  )}
+                </div>
+              )}
               {lines.map((line, i) => (
                 <div key={i}>{line}</div>
               ))}
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-4 flex items-center gap-2 flex-wrap"
-            >
-              <Prompt path="C:\SIM\ACTIVE_USER" clock={clock}>
-                {typing ? (
-                  <span className="cursor-block" aria-hidden="true" />
-                ) : (
-                  <input
-                    className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    autoFocus
-                    placeholder="type and press Enter…"
-                  />
-                )}
-              </Prompt>
-            </form>
+            {!preBoot && (
+              <form
+                onSubmit={handleSubmit}
+                className="mt-4 flex items-center gap-2 flex-wrap"
+              >
+                <Prompt path="C:\\SIM\\ACTIVE_USER" clock={clock}>
+                  {typing ? (
+                    <span className="cursor-block" aria-hidden="true" />
+                  ) : (
+                    <input
+                      className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      autoFocus
+                      placeholder="type and press Enter…"
+                    />
+                  )}
+                </Prompt>
+              </form>
+            )}
           </div>
         </div>
       </div>

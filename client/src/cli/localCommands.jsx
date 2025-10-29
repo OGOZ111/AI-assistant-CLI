@@ -36,22 +36,17 @@ async function typeServer(ctx, cmd, speed = 30) {
 export async function handleLocalCommand(message, ctx) {
   const lower = message.toLowerCase().trim();
 
-  // clear / cls
-  if (["clear", "cls"].includes(lower)) {
-    ctx.setLines([]);
-    return true;
-  }
-
-  // help (localized)
-  if (lower === "help" || (lower === "apua" && ctx.lang === "fi")) {
-    const L = ctx.lang === "fi";
-    const lines = L
+  // helper to render help lines for a given language
+  const getHelpLines = (lang) => {
+    const L = lang === "fi";
+    return L
       ? [
           "Käytettävissä olevat komennot:",
           "  apua            - näytä tämä ohje",
           "  tyhjennä        - tyhjennä näkymä (alias: clear / cls)",
           "  nollaa          - käynnistä sovellus uudelleen (alias: reset / uudelleenkäynnistä)",
           "  hakemisto       - listaa hakemiston sisältö (alias: dir / ls)",
+          "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
           "  skannaa         - suorita diagnostiikka edistymispalkeilla",
           "  maski päälle|pois - ota pikselimaski käyttöön tai pois",
@@ -81,6 +76,7 @@ export async function handleLocalCommand(message, ctx) {
           "  clear / cls     - clear the screen",
           "  reset           - refresh the page",
           "  dir / ls        - list directory",
+          "  lang en|fi      - switch language on the fly",
           "  banner          - print the boot banner",
           "  scan            - run diagnostics with progress",
           "  mask on|off     - enable/disable pixel mask",
@@ -104,7 +100,79 @@ export async function handleLocalCommand(message, ctx) {
           "  education       - overview of Luke's education",
           "  commands        - ...",
         ];
-    ctx.setLines((prev) => [...prev, ...lines]);
+  };
+
+  // clear / cls
+  if (["clear", "cls"].includes(lower)) {
+    ctx.setLines([]);
+    return true;
+  }
+
+  // help (localized)
+  if (lower === "help" || (lower === "apua" && ctx.lang === "fi")) {
+    ctx.setLines((prev) => [...prev, ...getHelpLines(ctx.lang)]);
+    return true;
+  }
+
+  // language switch: lang en|fi
+  if (lower === "lang") {
+    ctx.setLines((prev) => [
+      ...prev,
+      ctx.lang === "fi" ? "> Käyttö: lang en|fi" : "> Usage: lang en|fi",
+    ]);
+    return true;
+  }
+  if (lower.startsWith("lang ")) {
+    const arg = lower.split(/\s+/)[1];
+    if (arg === "en" || arg === "fi") {
+      ctx.setLang?.(arg);
+      try {
+        localStorage.setItem("lang", arg);
+      } catch {
+        // ignore persistence errors
+      }
+      ctx.setLines((prev) => [
+        ...prev,
+        arg === "fi" ? "> Kieli asetettu: suomi" : "> Language set: English",
+        ...getHelpLines(arg),
+      ]);
+    } else {
+      ctx.setLines((prev) => [
+        ...prev,
+        ctx.lang === "fi" ? "> Käyttö: lang en|fi" : "> Usage: lang en|fi",
+      ]);
+    }
+    return true;
+  }
+
+  // Finnish alias: kieli en|fi
+  if (lower === "kieli") {
+    ctx.setLines((prev) => [
+      ...prev,
+      ctx.lang === "fi" ? "> Käyttö: kieli en|fi" : "> Usage: kieli en|fi",
+    ]);
+    return true;
+  }
+  if (lower.startsWith("kieli ")) {
+    const arg = lower.split(/\s+/)[1];
+    if (arg === "en" || arg === "fi") {
+      ctx.setLang?.(arg);
+      try {
+        localStorage.setItem("lang", arg);
+      } catch {
+        // ignore persistence errors
+      }
+      ctx.setLines((prev) => [
+        ...prev,
+        arg === "fi" ? "> Kieli asetettu: suomi" : "> Language set: English",
+        ...getHelpLines(arg),
+      ]);
+    } else {
+      ctx.setLines((prev) => [
+        ...prev,
+        ctx.lang === "fi" ? "> Käyttö: kieli en|fi" : "> Usage: kieli en|fi",
+      ]);
+    }
     return true;
   }
 

@@ -1,3 +1,16 @@
+/* Subtle pulse for active pre-boot selection */
+@keyframes pulseSoft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.pulse-soft {
+  animation: pulseSoft 1.2s ease-in-out infinite;
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;
