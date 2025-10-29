@@ -87,6 +87,21 @@ function resolveCanonicalCommand(cmd) {
   return { canonical: cmd, inferredLang: null };
 }
 
+// Clean up AI output to avoid echoing terminal prompts or markdown wrappers
+function sanitizeAIOutput(text) {
+  if (!text) return "";
+  let t = String(text);
+  // Strip leading markdown bold that wraps a prompt-like string
+  t = t.replace(/^\s*\*{1,3}\s*([^\n]*?)\s*\*{1,3}\s*/s, (m, inner) => {
+    return /C:\\/.test(inner) && />/.test(inner) ? "" : m;
+  });
+  // Remove a Windows-style prompt at the very start, e.g., C:\SIM\USER [12:34:56]>
+  t = t.replace(/^\s*C:\\[^\n>]*>\s*/i, "");
+  // Remove a leading blockquote caret if present
+  t = t.replace(/^\s*>\s+/, "");
+  return t.trimStart();
+}
+
 // Predefined static commands
 function buildStaticCommands(memory, lang = "en") {
   const now = new Date();
@@ -300,7 +315,7 @@ router.post("/", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone. Answer in language: ${useLang}. Context about Luke: ${JSON.stringify(
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond concisely with a mysterious, simulation-themed tone similar to the Bandersnatch episode of Black Mirror. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}. Context about Luke: ${JSON.stringify(
             memory
           )}`,
         },
@@ -311,8 +326,9 @@ router.post("/", async (req, res) => {
       ],
     });
 
-    const output =
+    const outputRaw =
       aiResponse.choices?.[0]?.message?.content ?? "> (no response)";
+    const output = sanitizeAIOutput(outputRaw);
     res.json({ response: output });
   } catch (error) {
     console.error("AI Error:", error);

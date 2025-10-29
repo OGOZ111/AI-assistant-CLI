@@ -27,8 +27,6 @@ function renderSparkline(values) {
     .join("");
 }
 
-// (Removed) typeBlock helper; informational commands now come from server
-
 // Helper: call backend for a command and type the response
 async function typeServer(ctx, cmd, speed = 30) {
   try {
@@ -54,7 +52,7 @@ async function typeServer(ctx, cmd, speed = 30) {
   }
   return true;
 }
-
+// --- Main local command handler ---
 export async function handleLocalCommand(message, ctx) {
   const lower = message.toLowerCase().trim();
 
@@ -291,7 +289,7 @@ export async function handleLocalCommand(message, ctx) {
         ` Server: ${data.online ? "ONLINE" : "OFFLINE"} (${ms}ms)`,
         ` Environment: ${data.env}`,
         ` Languages: ${(data.langs || ["en"]).join(", ")}`,
-        ` AI Key: ${data.hasAI ? "Detected" : "Not detected"}`,
+        ` AI Presence: ${data.hasAI ? "Detected" : "Not detected"}`,
         ` Load: ${String(load).padStart(2, " ")}%`,
         ` Time: ${new Date(data.now || Date.now()).toLocaleString()}`,
       ].join("\n");
@@ -316,7 +314,7 @@ export async function handleLocalCommand(message, ctx) {
         ` Server: ONLINE (~${jitter}ms)`,
         ` Environment: emulated`,
         ` Languages: en, fi`,
-        ` AI Key: Unknown`,
+        ` AI Presence: Unknown`,
         ` Load: ${load}%`,
         ` Time: ${new Date().toLocaleString()}`,
       ].join("\n");
