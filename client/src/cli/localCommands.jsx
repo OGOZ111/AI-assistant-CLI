@@ -71,6 +71,7 @@ export async function handleLocalCommand(message, ctx) {
           "  ping [--watch]  - mitattu viive (ms), valinnainen seuranta",
           "  export          - vie istunnon teksti (leikepöytä + .md)",
           "  dev help        - kehittäjäkomennot (vain admin)",
+          "  dev ingest-bilingual <teksti> - lisää molemmat kielet",
           "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
           "  export          - vie istunnon teksti (leikepöytä + .md)",
@@ -106,6 +107,7 @@ export async function handleLocalCommand(message, ctx) {
           "  ping [--watch]  - measure latency, optional watch",
           "  export          - export transcript (clipboard + .md)",
           "  dev help        - developer commands (admin-only)",
+          "  dev ingest-bilingual <text> - ingest EN+FI for one chunk",
           "  lang en|fi      - switch language on the fly",
           "  banner          - print the boot banner",
           "  export          - export transcript (clipboard + .md)",
@@ -474,6 +476,7 @@ export async function handleLocalCommand(message, ctx) {
       " dev logout            - remove stored admin token",
       " dev ingest <text>     - embed and insert a text chunk into RAG DB",
       " dev ingest-json {...} - JSON: { items: [{ content: string }] }",
+      " dev ingest-bilingual <text> - translate and ingest EN+FI",
     ];
     ctx.setLines((prev) => [...prev, ...lines]);
     return true;
@@ -578,6 +581,40 @@ export async function handleLocalCommand(message, ctx) {
       ctx.setLines((p) => [
         ...p,
         `> Ingested ${data.inserted ?? "?"} item into ${data.table}.`,
+      ]);
+    } catch (e) {
+      ctx.setLines((p) => [...p, `> Ingest error: ${e?.message || e}`]);
+    }
+    return true;
+  }
+
+  if (lower.startsWith("dev ingest-bilingual ")) {
+    const text = message.slice("dev ingest-bilingual ".length).trim();
+    if (!text) {
+      ctx.setLines((p) => [...p, "> Usage: dev ingest-bilingual <text>"]);
+      return true;
+    }
+    const token = (() => {
+      try { return localStorage.getItem("adminToken"); } catch { return null; }
+    })();
+    if (!token) {
+      ctx.setLines((p) => [...p, "> Missing admin token. Use: dev login <token>"]);
+      return true;
+    }
+    try {
+      const res = await fetch("http://localhost:5000/api/rag/bilingual-ingest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": token,
+        },
+        body: JSON.stringify({ text, sourceLang: ctx.lang || "en" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "bilingual ingest failed");
+      ctx.setLines((p) => [
+        ...p,
+        `> Bilingual ingest OK: ${data.inserted ?? "?"} items -> ${data.table}.`,
       ]);
     } catch (e) {
       ctx.setLines((p) => [...p, `> Ingest error: ${e?.message || e}`]);
