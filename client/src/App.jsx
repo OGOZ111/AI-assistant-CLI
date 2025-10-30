@@ -47,6 +47,7 @@ function App() {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]); // command history
   const histIdxRef = useRef(-1); // -1 means not browsing history
+  const [conversationId, setConversationId] = useState(null);
   // history removed; server handles stateless commands and AI fallback
   const [typing, setTyping] = useState(false);
   const [glitching, setGlitching] = useState(false);
@@ -166,6 +167,53 @@ function App() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior });
   }
+
+  // Open SSE stream when we have a conversationId
+  useEffect(() => {
+    if (!conversationId) return;
+    const url = `http://localhost:5000/api/chat/events/${encodeURIComponent(
+      conversationId
+    )}`;
+    const es = new EventSource(url);
+    es.onmessage = (ev) => {
+      try {
+        const payload = JSON.parse(ev.data || "{}");
+        if (payload?.type === "connected") return;
+        if (
+          payload?.type === "message" &&
+          payload.conversationId === conversationId
+        ) {
+          const author = String(payload.author || "");
+          // Avoid duplicating our own UI-rendered user/bot lines; show Discord/admin injections
+          const isDiscord = author.startsWith("discord:");
+          const isAdmin = author === "admin";
+          if (isDiscord || isAdmin) {
+            setLines((prev) => [
+              ...prev,
+              `> (${isDiscord ? "Discord" : "Admin"}) ${payload.text}`,
+            ]);
+          }
+        }
+      } catch {
+        /* ignore malformed payloads */
+      }
+    };
+    es.onerror = () => {
+      // Best-effort: close on error; it can be reopened on next command
+      try {
+        es.close();
+      } catch {
+        /* noop */
+      }
+    };
+    return () => {
+      try {
+        es.close();
+      } catch {
+        /* noop */
+      }
+    };
+  }, [conversationId]);
 
   // Auto-scroll to bottom whenever lines update or typing changes
   useEffect(() => {
@@ -473,6 +521,8 @@ function App() {
       setMaskEnabled,
       maskEnabled,
       setLang,
+      conversationId,
+      setConversationId,
       appendBlock,
       setTyping,
       showBannerSlow,
@@ -485,14 +535,19 @@ function App() {
 
     setTyping(true);
     try {
-      const reply = await sendCommand(message, lang);
+      const { response, conversationId: cid } = await sendCommand(
+        message,
+        lang,
+        conversationId
+      );
+      if (cid && !conversationId) setConversationId(cid);
       setLines((prev) => [
         ...prev,
         <>
           <span>&gt; </span>
           <span className="whitespace-pre-wrap">
             <Typewriter
-              text={reply}
+              text={response}
               speed={40}
               onTick={() => scrollToBottom("auto")}
               onDone={() => {

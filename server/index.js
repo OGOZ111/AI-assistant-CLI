@@ -6,6 +6,9 @@ import recruiterRouter from "./routes/recruiter.js";
 import statusRouter from "./routes/status.js";
 import { initSupabase, verifySupabaseConnection } from "./config/connectDB.js";
 import ragRouter from "./routes/rag.js";
+import chatRouter from "./routes/chat.js";
+import { initDiscord, setDiscordOnReply } from "./config/discord.js";
+import { logChatMessage } from "./services/conversations.js";
 
 dotenv.config();
 
@@ -17,6 +20,7 @@ app.use("/api/command", commandRouter); // AI command interface API route for te
 app.use("/api/recruiter", recruiterRouter); // Recruiter Mode API route for tailored responses for recruiters
 app.use("/api/status", statusRouter); // Server status API route
 app.use("/api/rag", ragRouter); // RAG API route for document retrieval and question answering from knowledge base in Supabase
+app.use("/api/chat", chatRouter); // Chat streaming + SSE + Discord bridge
 
 const PORT = process.env.PORT || 5000;
 
@@ -32,6 +36,17 @@ verifySupabaseConnection().then((res) => {
       }`
     );
   }
+});
+
+// Initialize Discord bot (optional) and wire /reply callback to inject messages into conversations
+initDiscord();
+setDiscordOnReply(async ({ conversationId, message, author }) => {
+  if (!conversationId || !message) return;
+  await logChatMessage({
+    conversationId,
+    author: author || "admin",
+    text: message,
+  });
 });
 
 app.listen(PORT, () => console.log(`🧠 AI Server running on port ${PORT}`));

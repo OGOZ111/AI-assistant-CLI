@@ -31,14 +31,21 @@ function renderSparkline(values) {
 async function typeServer(ctx, cmd, speed = 30) {
   try {
     ctx.setTyping?.(true);
-    const reply = await sendCommand(cmd, ctx.lang);
+    const { response, conversationId } = await sendCommand(
+      cmd,
+      ctx.lang,
+      ctx.conversationId
+    );
+    if (conversationId && !ctx.conversationId && ctx.setConversationId) {
+      ctx.setConversationId(conversationId);
+    }
     const key = `sv-${Date.now()}`;
     ctx.setLines((prev) => [
       ...prev,
       <span key={key}>
         <span className="whitespace-pre-wrap">
           <Typewriter
-            text={reply}
+            text={response}
             speed={speed}
             onTick={() => ctx.scrollToBottom?.("auto")}
             onDone={() => ctx.setTyping?.(false)}

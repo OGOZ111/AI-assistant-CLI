@@ -2,6 +2,7 @@ import express from "express";
 import fs from "fs";
 import OpenAI from "openai";
 import { getSupabase } from "../config/connectDB.js";
+import { logChatMessage } from "../services/conversations.js";
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ const memoryEnPath = new URL("../memory.json", import.meta.url);
 const memoryFiPath = new URL("../memory.fi.json", import.meta.url);
 
 function loadMemory(lang = "en") {
+  // "en" or "fi" that loads memory.fi.json if available
   try {
     if (lang === "fi" && fs.existsSync(memoryFiPath)) {
       return JSON.parse(fs.readFileSync(memoryFiPath, "utf8"));
@@ -283,6 +285,12 @@ router.post("/", async (req, res) => {
   console.log("Received command:", req.body);
   const { input } = req.body;
   const langRaw = req.body.lang;
+  const cidRaw =
+    req.body.conversationId || req.body.cid || req.body.conversation_id;
+  const conversationId = String(
+    cidRaw ||
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  );
 
   if (!input) return res.status(400).json({ error: "No input provided" });
 
@@ -296,10 +304,16 @@ router.post("/", async (req, res) => {
   const memory = loadMemory(useLang);
   const staticCommands = buildStaticCommands(memory, useLang);
 
+  // Log user message (best-effort)
+  try {
+    // Fire-and-forget logging to avoid adding latency
+    logChatMessage({ conversationId, author: "user", text: input });
+  } catch {}
+
   // Check for static command first
   if (staticCommands[canonical]) {
     console.log("Handled static command:", canonical, "(lang:", useLang, ")");
-    return res.json({ response: staticCommands[canonical] });
+    return res.json({ response: staticCommands[canonical], conversationId });
   }
 
   // Easter eggs for specific commands
@@ -397,7 +411,11 @@ router.post("/", async (req, res) => {
     const outputRaw =
       aiResponse.choices?.[0]?.message?.content ?? "> (no response)";
     const output = sanitizeAIOutput(outputRaw);
-    res.json({ response: output });
+    // Respond first, then log in background to minimize latency
+    res.json({ response: output, conversationId });
+    try {
+      logChatMessage({ conversationId, author: "bot", text: output });
+    } catch {}
     console.log("AI response content:", output);
   } catch (error) {
     console.error("AI Error:", error);
