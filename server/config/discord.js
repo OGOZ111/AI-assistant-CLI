@@ -36,6 +36,8 @@ export async function initDiscord() {
     // Use 'clientReady' to avoid deprecation ('ready' will be removed in v15)
     client.on("clientReady", () => {
       console.log(`🤖 Discord bot logged in as ${client.user.tag}`);
+      // Announce bot is online
+      sendDiscordMessage(`🤖 Bot is online and ready to receive messages!`);
     });
 
     client.on("messageCreate", async (message) => {
