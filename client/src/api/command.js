@@ -1,5 +1,7 @@
+import { apiUrl } from "./http.js";
+
 export async function sendCommand(input, lang, conversationId) {
-  const res = await fetch("http://localhost:5000/api/command", {
+  const res = await fetch(apiUrl("/api/command"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ input, lang, conversationId }),

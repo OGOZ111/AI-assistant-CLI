@@ -4,6 +4,7 @@ import Typewriter from "../components/Typewriter.jsx";
 import TypeAndReplace from "../components/TypeAndReplace.jsx";
 import BigSymbol from "../components/BigSymbol.jsx";
 import { sendCommand } from "../api/command.js";
+import { apiUrl } from "../api/http.js";
 
 // --- Lightweight client-side state for ping history (persists during session) ---
 const PING_HISTORY = [];
@@ -74,7 +75,6 @@ export async function handleLocalCommand(message, ctx) {
           "  tyhjennä        - tyhjennä näkymä (alias: clear / cls)",
           "  nollaa          - käynnistä sovellus uudelleen (alias: reset / uudelleenkäynnistä)",
           "  hakemisto       - listaa hakemiston sisältö (alias: dir / ls)",
-          "  tila [--watch]  - näytä palvelimen tila (päivittää jatkuvasti)",
           "  ping [--watch]  - mitattu viive (ms), valinnainen seuranta",
           "  export          - vie istunnon teksti (leikepöytä + .md)",
           "  dev help        - kehittäjäkomennot (vain admin)",
@@ -290,7 +290,7 @@ export async function handleLocalCommand(message, ctx) {
     try {
       const runOnce = async () => {
         const started = performance.now();
-        const res = await fetch("http://localhost:5000/api/status");
+        const res = await fetch(apiUrl("/api/status"));
         const ms = Math.max(1, Math.round(performance.now() - started));
         const data = await res.json();
         const load = Math.min(
@@ -331,7 +331,7 @@ export async function handleLocalCommand(message, ctx) {
       } else {
         ctx.setTyping?.(true);
         const started = performance.now();
-        const res = await fetch("http://localhost:5000/api/status");
+        const res = await fetch(apiUrl("/api/status"));
         const ms = Math.max(1, Math.round(performance.now() - started));
         const data = await res.json();
         const load = Math.min(
@@ -429,7 +429,7 @@ export async function handleLocalCommand(message, ctx) {
     try {
       const doPing = async () => {
         const started = performance.now();
-        const res = await fetch("http://localhost:5000/api/status/ping");
+        const res = await fetch(apiUrl("/api/status/ping"));
         await res.json();
         const ms = Math.max(1, Math.round(performance.now() - started));
         PING_HISTORY.push(ms);
@@ -535,7 +535,7 @@ export async function handleLocalCommand(message, ctx) {
       return true;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/rag/ingest", {
+      const res = await fetch(apiUrl("/api/rag/ingest"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -575,7 +575,7 @@ export async function handleLocalCommand(message, ctx) {
       return true;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/rag/ingest", {
+      const res = await fetch(apiUrl("/api/rag/ingest"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -616,17 +616,14 @@ export async function handleLocalCommand(message, ctx) {
       return true;
     }
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/rag/bilingual-ingest",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-token": token,
-          },
-          body: JSON.stringify({ text, sourceLang: ctx.lang || "en" }),
-        }
-      );
+      const res = await fetch(apiUrl("/api/rag/bilingual-ingest"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": token,
+        },
+        body: JSON.stringify({ text, sourceLang: ctx.lang || "en" }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "bilingual ingest failed");
       ctx.setLines((p) => [
@@ -726,7 +723,7 @@ export async function handleLocalCommand(message, ctx) {
     try {
       ctx.setTyping?.(true);
       const res = await fetch(
-        `http://localhost:5000/api/recruiter?lang=${encodeURIComponent(
+        `${apiUrl("/api/recruiter")}?lang=${encodeURIComponent(
           ctx.lang || "en"
         )}`
       );

@@ -8,6 +8,7 @@ import Prompt from "./components/Prompt.jsx";
 import getSteps from "./boot/steps.js";
 import { handleLocalCommand } from "./cli/localCommands.jsx";
 import { sendCommand } from "./api/command.js";
+import { sseUrl } from "./api/http.js";
 
 // Prevent React Strict Mode from double-running the boot sequence in development
 // This resets on full page refresh, so the sequence still runs every reload.
@@ -15,7 +16,7 @@ let BOOT_SEQ_HAS_RUN = false;
 let PREBOOT_SHOWN = false;
 const SYSTEM_STATUS = {
   en: "SYSTEM ONLINE. Hello! I'm Luke's CLI assistant. Ask me anything about Luke and his projects, or type 'help' to see commands.",
-  fi: "JÄRJESTELMÄ ONLINE. Hei! Olen Luken CLI-avustaja. Kysy mitä vain Lukeen ja projekteihin liittyen tai kirjoita 'help' nähdäksesi komennot.",
+  fi: "JÄRJESTELMÄ ONLINE. Hei! Olen Luken CLI-avustaja. Kysy mitä vain Lukeen ja projekteihin liittyen tai kirjoita 'apua' nähdäksesi komennot.",
 };
 const PREBOOT_TEXT = {
   en: {
@@ -171,9 +172,9 @@ function App() {
   // Open SSE stream when we have a conversationId
   useEffect(() => {
     if (!conversationId) return;
-    const url = `http://localhost:5000/api/chat/events/${encodeURIComponent(
-      conversationId
-    )}`;
+    const url = sseUrl(
+      `/api/chat/events/${encodeURIComponent(conversationId)}`
+    );
     const es = new EventSource(url);
     es.onmessage = (ev) => {
       try {
