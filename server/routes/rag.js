@@ -16,6 +16,14 @@ function getOpenAI() {
   }
 }
 
+// Simple language detection using our lightweight prefixes
+function detectLangFromContent(text) {
+  const s = String(text || "");
+  if (/^\s*EN:\s*/i.test(s) || /^\s*\[en\]/i.test(s)) return "en";
+  if (/^\s*FI:\s*/i.test(s) || /^\s*\[fi\]/i.test(s)) return "fi";
+  return null;
+}
+
 // POST /api/rag/ingest
 // { items: [{ id?, content: string, metadata?: object }] }
 router.post("/ingest", async (req, res) => {
@@ -75,7 +83,13 @@ router.post("/query", async (req, res) => {
       .status(500)
       .json({ error: "OPENAI_API_KEY missing for embeddings" });
 
-  const { query, matchCount = 4, minSimilarity = 0.5 } = req.body || {};
+  const {
+    query,
+    matchCount = 4,
+    minSimilarity = 0.5,
+    prefer_lang = null,
+    exact_lang = false,
+  } = req.body || {};
   if (!query) return res.status(400).json({ error: "query required" });
   try {
     const emb = await openai.embeddings.create({
@@ -99,7 +113,30 @@ router.post("/query", async (req, res) => {
       });
     }
     if (rpc.error) return res.status(500).json({ error: rpc.error.message });
-    return res.json({ results: rpc.data || [], rpc: rpcName });
+
+    let results = Array.isArray(rpc.data) ? rpc.data.slice() : [];
+    if (prefer_lang) {
+      const pref = String(prefer_lang).toLowerCase() === "fi" ? "fi" : "en";
+      if (exact_lang) {
+        results = results.filter(
+          (r) => detectLangFromContent(r.content) === pref
+        );
+      } else {
+        // Soft preference: stable re-order so preferred language comes first
+        results = results
+          .map((r, idx) => ({ r, idx }))
+          .sort((a, b) => {
+            const la = detectLangFromContent(a.r.content) === pref ? 0 : 1;
+            const lb = detectLangFromContent(b.r.content) === pref ? 0 : 1;
+            if (la !== lb) return la - lb;
+            // Preserve original order from the RPC (already ranked by similarity)
+            return a.idx - b.idx;
+          })
+          .map((x) => x.r);
+      }
+    }
+    if (results.length > matchCount) results = results.slice(0, matchCount);
+    return res.json({ results, rpc: rpcName });
   } catch (e) {
     console.error("RAG query error:", e);
     return res.status(500).json({ error: "RAG query failed" });

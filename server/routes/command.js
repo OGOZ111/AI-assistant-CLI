@@ -103,6 +103,23 @@ function sanitizeAIOutput(text) {
   return t.trimStart();
 }
 
+// Lightweight language detector based on simple prefixes used in content
+function detectLangFromContent(text) {
+  const s = String(text || "");
+  if (/^\s*EN:\s*/i.test(s) || /^\s*\[en\]/i.test(s)) return "en";
+  if (/^\s*FI:\s*/i.test(s) || /^\s*\[fi\]/i.test(s)) return "fi";
+  return null;
+}
+
+// One-off language override via message prefix, e.g. "en: show projects" or "fi: projektit" ##### NOTE: THIS MUST BE TESTED THOROUGHLY BEFORE PROD!!!!!!
+function parseOneOffLangOverride(input) {
+  const m = String(input || "").match(/^\s*(en|fi)\s*:\s*(.*)$/i);
+  if (!m) return { lang: null, stripped: null };
+  const lang = m[1].toLowerCase();
+  const stripped = m[2];
+  return { lang, stripped };
+}
+
 // Predefined static commands
 function buildStaticCommands(memory, lang = "en") {
   const now = new Date();
@@ -269,9 +286,13 @@ router.post("/", async (req, res) => {
 
   if (!input) return res.status(400).json({ error: "No input provided" });
 
-  const rawCmd = input.toLowerCase().trim();
+  // Detect per-message override like "en: ..." or "fi: ..." (does not change global UI language)
+  const { lang: overrideLang, stripped } = parseOneOffLangOverride(input);
+  const inputForProcessing = stripped ?? input;
+
+  const rawCmd = inputForProcessing.toLowerCase().trim();
   const { canonical, inferredLang } = resolveCanonicalCommand(rawCmd);
-  const useLang = langRaw || inferredLang || "en";
+  const useLang = overrideLang || langRaw || inferredLang || "en";
   const memory = loadMemory(useLang);
   const staticCommands = buildStaticCommands(memory, useLang);
 
@@ -318,7 +339,7 @@ router.post("/", async (req, res) => {
       if (supabase) {
         const emb = await openai.embeddings.create({
           model: "text-embedding-3-small",
-          input: input,
+          input: inputForProcessing,
         });
         const queryEmbedding = emb.data[0].embedding;
         // Try match_documents first; fallback to match_kb_chunks
@@ -335,7 +356,12 @@ router.post("/", async (req, res) => {
           });
         }
         if (!rpc.error && Array.isArray(rpc.data) && rpc.data.length) {
-          ragContext = rpc.data
+          const pref = useLang === "fi" ? "fi" : "en";
+          const preferred = rpc.data.filter(
+            (r) => detectLangFromContent(r.content) === pref
+          );
+          const chosen = (preferred.length ? preferred : rpc.data).slice(0, 4);
+          ragContext = chosen
             .map((r, i) => `[#${i + 1}] ${r.content}`)
             .join("\n\n");
         }
@@ -355,13 +381,15 @@ router.post("/", async (req, res) => {
           role: "system",
           content: `You are an interactive AI terminal for Luke B's portfolio. Respond calm and happy. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
 
+          If the user asks how to switch languages, tell them to type: "lang en" for English or "lang fi" for Finnish. Do not change the language yourself.
+
           Static context about Luke (curated): ${JSON.stringify(memory)}
 
           Retrieved knowledge base snippets (may be empty):\n${ragContext}`,
         },
         {
           role: "user",
-          content: input,
+          content: inputForProcessing,
         },
       ],
     });
