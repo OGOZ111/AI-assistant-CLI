@@ -174,7 +174,9 @@ export async function handleLocalCommand(message, ctx) {
       ctx.setLines((prev) => [
         ...prev,
         arg === "fi" ? "> Kieli asetettu: suomi" : "> Language set: English",
-        ...getHelpLines(arg),
+        arg === "fi"
+          ? "> Kirjoita 'apua' nähdäksesi komennot."
+          : "> Type 'help' to see commands.",
       ]);
     } else {
       ctx.setLines((prev) => [
@@ -205,7 +207,9 @@ export async function handleLocalCommand(message, ctx) {
       ctx.setLines((prev) => [
         ...prev,
         arg === "fi" ? "> Kieli asetettu: suomi" : "> Language set: English",
-        ...getHelpLines(arg),
+        arg === "fi"
+          ? "> Kirjoita 'apua' nähdäksesi komennot."
+          : "> Type 'help' to see commands.",
       ]);
     } else {
       ctx.setLines((prev) => [

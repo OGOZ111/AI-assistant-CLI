@@ -42,7 +42,10 @@ function App() {
   const [lang, setLang] = useState(() => localStorage.getItem("lang") || "en");
   const [preBoot, setPreBoot] = useState(true);
   const [shouldBoot, setShouldBoot] = useState(false);
-  const [preSel, setPreSel] = useState("en");
+  const [preSel, setPreSel] = useState(
+    () => localStorage.getItem("lang") || "en"
+  );
+  const preSelRef = useRef(localStorage.getItem("lang") || "en");
   const [preConfirmed] = useState(false);
 
   const [input, setInput] = useState("");
@@ -153,6 +156,7 @@ function App() {
   // Confirm language selection and immediately boot
   function chooseAndBoot(sel) {
     setPreSel(sel);
+    preSelRef.current = sel;
     setLang(sel);
     try {
       localStorage.setItem("lang", sel);
@@ -347,14 +351,17 @@ function App() {
       }
       if (key === "ArrowLeft" || key === "ArrowUp") {
         setPreSel("en");
+        preSelRef.current = "en";
       } else if (key === "ArrowRight" || key === "ArrowDown") {
         setPreSel("fi");
+        preSelRef.current = "fi";
       } else if (key === "Enter") {
         // Confirm language and immediately boot
-        bootLangRef.current = preSel;
-        setLang(preSel);
+        const chosen = preSelRef.current || preSel || "en";
+        bootLangRef.current = chosen;
+        setLang(chosen);
         try {
-          localStorage.setItem("lang", preSel);
+          localStorage.setItem("lang", chosen);
         } catch {
           // ignore persistence errors
         }
@@ -406,8 +413,9 @@ function App() {
       // Tiny pause after pre-boot
       await new Promise((r) => setTimeout(r, 200));
 
-      // Loading bars in selected language
-      const activeLang = bootLangRef.current || "en";
+      // Loading bars in selected language, and sync state for consistency
+      const activeLang = bootLangRef.current || lang || "en";
+      if (lang !== activeLang) setLang(activeLang);
       for (const [label, duration] of getSteps(activeLang)) {
         await addProgress(label, duration);
       }
@@ -431,7 +439,7 @@ function App() {
         30
       );
     })();
-  }, [shouldBoot]);
+  }, [shouldBoot, lang]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -669,7 +677,7 @@ function App() {
                     <span className="cursor-block" aria-hidden="true" />
                   ) : (
                     <input
-                      className="bg-black text-white caret-white outline-none flex-1 placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
+                      className="bg-black text-white caret-white outline-none flex-1 w-full pr-2 tracking-tight placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -710,7 +718,11 @@ function App() {
                         }
                       }}
                       autoFocus
-                      placeholder="type and press Enter…"
+                      placeholder={
+                        lang === "fi"
+                          ? "kirjoita ja paina Enter…"
+                          : "type and press Enter…"
+                      }
                     />
                   )}
                 </Prompt>
