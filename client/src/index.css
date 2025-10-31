@@ -487,10 +487,13 @@ a:hover {
 .cursor-block {
   display: inline-block;
   width: 0.6ch;
-  height: 1.1em;
+  height: 1em;
   background: #ffffff;
-  margin-left: 6px;
-  vertical-align: bottom;
+  margin-left: calc(0.5ch - 1px);
+  vertical-align: baseline;
+  position: relative;
+  top: 3px; /* nudge down a bit more to sit flush */
+  /* left nudge incorporated into margin-left to preserve layout spacing */
   animation: blink 900ms step-end infinite;
 }
 

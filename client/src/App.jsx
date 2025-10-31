@@ -279,7 +279,11 @@ function App() {
     new Promise((resolve) => {
       const keyBase = `banner-${Date.now()}`;
 
-      const bannerArr = bannerRaw.split("\n");
+      // Split banner and trim trailing empty lines to reduce bottom whitespace
+      const rawLines = bannerRaw.split("\n");
+      let end = rawLines.length;
+      while (end > 0 && rawLines[end - 1].trim() === "") end--;
+      const bannerArr = rawLines.slice(0, end);
 
       setLines((prev) => [
         ...prev,
@@ -435,6 +439,12 @@ function App() {
         jitterPct: 0.3,
       });
       await new Promise((r) => setTimeout(r, 250));
+      // Add a little spacing before the ONLINE line
+      const spKey = `sp-${Date.now()}`;
+      setLines((prev) => [
+        ...prev,
+        <span key={spKey} style={{ display: "block", height: "8px" }} />,
+      ]);
       appendTyped(
         SYSTEM_STATUS[activeLang] || SYSTEM_STATUS.en,
         () => setTyping(false),
@@ -583,7 +593,7 @@ function App() {
     <div
       className={`${
         glitching ? "glitch-active" : ""
-      } glitch-container min-h-screen bg-black text-green-400 font-mono flex items-center justify-center p-4`}
+      } glitch-container min-h-screen bg-black text-green-400 font-mono flex items-center justify-center p-4 overflow-x-hidden`}
     >
       {/* Fullscreen glitch overlay */}
       <div className="glitch-overlay" />
@@ -603,7 +613,7 @@ function App() {
         {/* Content area */}
         <div
           ref={contentRef}
-          className={`p-4 h-[65vh] md:h-[70vh] overflow-y-auto terminal-scroll crt ${
+          className={`p-4 h-[65vh] md:h-[70vh] overflow-y-auto overflow-x-hidden terminal-scroll crt ${
             maskEnabled ? "pixel-mask" : ""
           }`}
         >
@@ -669,64 +679,60 @@ function App() {
               ))}
             </div>
 
-            {!preBoot && (
+            {!preBoot && !typing && (
               <form
                 onSubmit={handleSubmit}
                 className="mt-4 flex items-center gap-2 flex-wrap"
               >
                 <Prompt path="C:\\SIM\\ACTIVE_USER" clock={clock}>
-                  {typing ? (
-                    <span className="cursor-block" aria-hidden="true" />
-                  ) : (
-                    <input
-                      className="bg-black text-white caret-white outline-none flex-1 w-full pr-2 tracking-tight placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        // Navigate history
-                        if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          if (history.length === 0) return;
-                          const idx = histIdxRef.current;
-                          const next =
-                            idx === -1
-                              ? history.length - 1
-                              : Math.max(0, idx - 1);
+                  <input
+                    className="bg-black text-white caret-white outline-none flex-1 w-full pr-2 tracking-tight placeholder:text-white/40 border-b border-white/30 focus:border-white transition-colors selection:bg-green-500/20 selection:text-white"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Navigate history
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        if (history.length === 0) return;
+                        const idx = histIdxRef.current;
+                        const next =
+                          idx === -1
+                            ? history.length - 1
+                            : Math.max(0, idx - 1);
+                        setInput(history[next] || "");
+                        histIdxRef.current = next;
+                        return;
+                      }
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        if (history.length === 0) return;
+                        const idx = histIdxRef.current;
+                        if (idx === -1) return;
+                        const next = idx + 1;
+                        if (next >= history.length) {
+                          setInput("");
+                          histIdxRef.current = -1;
+                        } else {
                           setInput(history[next] || "");
                           histIdxRef.current = next;
-                          return;
                         }
-                        if (e.key === "ArrowDown") {
-                          e.preventDefault();
-                          if (history.length === 0) return;
-                          const idx = histIdxRef.current;
-                          if (idx === -1) return;
-                          const next = idx + 1;
-                          if (next >= history.length) {
-                            setInput("");
-                            histIdxRef.current = -1;
-                          } else {
-                            setInput(history[next] || "");
-                            histIdxRef.current = next;
-                          }
-                          return;
-                        }
-                        // Tab completion
-                        if (e.key === "Tab") {
-                          e.preventDefault();
-                          const completed = completeWithTab(input);
-                          if (completed) setInput(completed);
-                          return;
-                        }
-                      }}
-                      autoFocus
-                      placeholder={
-                        lang === "fi"
-                          ? "kirjoita ja paina Enter…"
-                          : "type and press Enter…"
+                        return;
                       }
-                    />
-                  )}
+                      // Tab completion
+                      if (e.key === "Tab") {
+                        e.preventDefault();
+                        const completed = completeWithTab(input);
+                        if (completed) setInput(completed);
+                        return;
+                      }
+                    }}
+                    autoFocus
+                    placeholder={
+                      lang === "fi"
+                        ? "kirjoita ja paina Enter…"
+                        : "type and press Enter…"
+                    }
+                  />
                 </Prompt>
               </form>
             )}
