@@ -65,8 +65,8 @@ export async function handleLocalCommand(message, ctx) {
   const lower = message.toLowerCase().trim();
   const tokens = lower.split(/\s+/).filter(Boolean);
 
-  // helper to render help lines for a given language
-  const getHelpLines = (lang) => {
+  // helper: full help (legacy, comprehensive)
+  const getHelpLinesFull = (lang) => {
     const L = lang === "fi";
     return L
       ? [
@@ -81,11 +81,9 @@ export async function handleLocalCommand(message, ctx) {
           "  dev ingest-bilingual <teksti> - lisää molemmat kielet",
           "  lang en|fi      - vaihda kieltä lennossa",
           "  banneri         - näytä aloitusbanneri uudelleen",
-          "  export          - vie istunnon teksti (leikepöytä + .md)",
           "  skannaa         - suorita diagnostiikka edistymispalkeilla",
           "  maski päälle|pois - ota pikselimaski käyttöön tai pois",
           "  maski vaihda    - vaihda maskin tila",
-          "  tila 80|auto    - rajoita ~80 merkkiin tai palauta automaattinen tila",
           "  tietoa          - mitä tämä sovellus on",
           "  ominaisuudet    - keskeiset ominaisuudet",
           "  vinkit          - vinkkejä ja pikanäppäimiä",
@@ -112,16 +110,10 @@ export async function handleLocalCommand(message, ctx) {
           "  dir / ls        - list directory",
           "  status [--watch]- show server status (auto-refresh)",
           "  ping [--watch]  - measure latency, optional watch",
-          "  export          - export transcript (clipboard + .md)",
-          "  dev help        - developer commands (admin-only)",
-          "  dev ingest-bilingual <text> - ingest EN+FI for one chunk",
-          "  lang en|fi      - switch language on the fly",
-          "  banner          - print the boot banner",
-          "  export          - export transcript (clipboard + .md)",
+          "  lang en|fi      - switch language",
           "  scan            - run diagnostics with progress",
           "  mask on|off     - enable/disable pixel mask",
           "  mask toggle     - toggle pixel mask",
-          "  mode 80|auto    - clamp to ~80 columns or restore",
           "  about           - what this app is",
           "  features        - key features overview",
           "  tips            - usage tips and shortcuts",
@@ -142,15 +134,51 @@ export async function handleLocalCommand(message, ctx) {
         ];
   };
 
+  // helper: compact help (default)
+  const getHelpLines = (lang) => {
+    const L = lang === "fi";
+    return L
+      ? [
+          "Käytettävissä olevat komennot:",
+          '  apua            - lyhyt ohje ("apua kaikki" = kaikki)',
+          "  clear / cls     - tyhjennä näkymä",
+          "  kieli en|fi      - vaihda kieltä",
+          "  status          - palvelimen tila",
+          "  banneri         - näytä aloitusbanneri",
+          "  scan            - diagnostiikka",
+          "  about | projects | experience | skills | github | education",
+        ]
+      : [
+          "Available commands:",
+          '  help            - short help ("help all" = full)',
+          "  clear / cls     - clear the screen",
+          "  lang en|fi      - switch language",
+          "  status          - server status",
+          "  banner          - show the boot banner",
+          "  scan            - diagnostics",
+          "  about | projects | experience | skills | github | education",
+        ];
+  };
+
   // clear / cls
   if (["clear", "cls"].includes(lower)) {
     ctx.setLines([]);
     return true;
   }
 
-  // help (localized)
+  // help (localized, compact)
   if (lower === "help" || (lower === "apua" && ctx.lang === "fi")) {
-    ctx.setLines((prev) => [...prev, ...getHelpLines(ctx.lang)]);
+    const extra =
+      ctx.lang === "fi"
+        ? '> Vinkki: kirjoita "apua kaikki" nähdäksesi kaikki komennot.'
+        : '> Tip: type "help all" to see all commands.';
+    ctx.setLines((prev) => [...prev, ...getHelpLines(ctx.lang), extra]);
+    return true;
+  }
+
+  // full help on demand
+  if (lower === "help all" || (lower === "apua kaikki" && ctx.lang === "fi")) {
+    ctx.setLines((prev) => [...prev, ...getHelpLinesFull(ctx.lang)]);
     return true;
   }
 
