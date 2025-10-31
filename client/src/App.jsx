@@ -157,6 +157,8 @@ function App() {
   function chooseAndBoot(sel) {
     setPreSel(sel);
     preSelRef.current = sel;
+    // Ensure boot sequence reads the just-chosen language even if state hasn't flushed yet
+    bootLangRef.current = sel;
     setLang(sel);
     try {
       localStorage.setItem("lang", sel);
