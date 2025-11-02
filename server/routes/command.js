@@ -2,7 +2,10 @@ import express from "express";
 import fs from "fs";
 import OpenAI from "openai";
 import { getSupabase } from "../config/connectDB.js";
-import { logChatMessage } from "../services/conversations.js";
+import {
+  logChatMessage,
+  getConversationHistory,
+} from "../services/conversations.js";
 
 const router = express.Router();
 
@@ -304,6 +307,9 @@ router.post("/", async (req, res) => {
   const memory = loadMemory(useLang);
   const staticCommands = buildStaticCommands(memory, useLang);
 
+  // Fetch previous conversation history BEFORE logging this turn
+  const previousHistory = getConversationHistory(conversationId);
+
   // Log user message (best-effort)
   try {
     // Fire-and-forget logging to avoid adding latency
@@ -351,22 +357,31 @@ router.post("/", async (req, res) => {
     try {
       const supabase = getSupabase();
       if (supabase) {
+        // Simple coreference-aware embedding query: if input uses pronouns, hint subject
+        const subjectName = memory?.name || "Luke";
+        const enPronouns = /\b(he|him|his)\b/i;
+        const fiPronouns = /\b(hän|hänen|häntä|he|heidän|heitä)\b/i;
+        const pronounRe = useLang === "fi" ? fiPronouns : enPronouns;
+        const queryForEmbedding = pronounRe.test(inputForProcessing)
+          ? `${inputForProcessing} (about ${subjectName})`
+          : inputForProcessing;
+
         const emb = await openai.embeddings.create({
           model: "text-embedding-3-small",
-          input: inputForProcessing,
+          input: queryForEmbedding,
         });
         const queryEmbedding = emb.data[0].embedding;
         // Try match_documents first; fallback to match_kb_chunks
         let rpc = await supabase.rpc("match_documents", {
           query_embedding: queryEmbedding,
-          match_count: 4,
-          min_similarity: 0.5,
+          match_count: 6,
+          min_similarity: 0.3,
         });
         if (rpc.error) {
           rpc = await supabase.rpc("match_kb_chunks", {
             query_embedding: queryEmbedding,
-            match_count: 4,
-            min_similarity: 0.5,
+            match_count: 6,
+            min_similarity: 0.3,
           });
         }
         if (!rpc.error && Array.isArray(rpc.data) && rpc.data.length) {
@@ -374,7 +389,7 @@ router.post("/", async (req, res) => {
           const preferred = rpc.data.filter(
             (r) => detectLangFromContent(r.content) === pref
           );
-          const chosen = (preferred.length ? preferred : rpc.data).slice(0, 4);
+          const chosen = (preferred.length ? preferred : rpc.data).slice(0, 6);
           ragContext = chosen
             .map((r, i) => `[#${i + 1}] ${r.content}`)
             .join("\n\n");
@@ -384,23 +399,43 @@ router.post("/", async (req, res) => {
       // RAG is optional; proceed quietly if unavailable
     }
 
+    // Build short recent history for conversational context (exclude current turn)
+    const recent = Array.isArray(previousHistory)
+      ? previousHistory.slice(-6)
+      : [];
+    const recentAsChat = recent.map((m) => ({
+      role: m.author === "bot" ? "assistant" : "user",
+      content: m.text,
+    }));
+
+    const ragPresent = Boolean(ragContext && ragContext.trim());
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 400,
-      presence_penalty: 0,
-      frequency_penalty: 0,
+      temperature: ragPresent ? 0.2 : 0.6,
+      max_tokens: 900,
+      presence_penalty: 0.1,
+      frequency_penalty: 0.3,
       messages: [
         {
           role: "system",
-          content: `You are an interactive AI terminal for Luke B's portfolio. Respond calm and happy. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
+          content: `You are an interactive AI terminal for Luke B's portfolio. Respond calm and happy. You can answer personal questions. Do NOT print any shell prompt, paths, timestamps, or prefixes like ">" or "C:\\...>". Do NOT use markdown emphasis or code fences unless explicitly asked. Output plain text lines only. Answer in language: ${useLang}.
 
           If the user asks how to switch languages, tell them to type: "lang en" for English or "lang fi" for Finnish. Do not change the language yourself.
 
-          Static context about Luke (curated): ${JSON.stringify(memory)}
-
-          Retrieved knowledge base snippets (may be empty):\n${ragContext}`,
+          ${
+            ragPresent
+              ? `Retrieved knowledge base snippets (authoritative, up-to-date; prefer these over any static memory):\n${ragContext}\n\nOnly answer using the retrieved snippets. If the answer is not present or insufficient, say you don't know.`
+              : `Static context about Luke (curated): ${JSON.stringify(
+                  memory
+                )}\nUse this static context to answer. If unsure, say you don't know.`
+          }`,
         },
+        {
+          role: "system",
+          content:
+            "Use recent conversation to resolve pronouns and references. If the user says 'his', 'her', etc., assume it refers to the last named person discussed (typically Luke) unless context says otherwise.",
+        },
+        ...recentAsChat,
         {
           role: "user",
           content: inputForProcessing,
