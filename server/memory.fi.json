@@ -2,6 +2,7 @@
   "name": "Luke B",
   "role": "Full Stack -kehittäjä",
   "based_in": "Suomi",
+  "raised_in": "Australia",
   "skills": [
     "React",
     "Node.js",
@@ -11,38 +12,47 @@
     "TypeScript"
   ],
   "experience": [
-    "Frontend- ja backend-kehitystä Reactilla ja Nodella",
+    "Frontend- ja backend-kehitystä Reactilla ja Node.js:llä",
     "End-to-end -testausta, bugikorjauksia ja UI/UX-parannuksia",
-    "Tiimityöskentelyä Git-haarojen ja Trello-hallinnan avulla"
+    "Tiimityötä Git-haarojen ja Trello-hallinnan avulla"
+  ],
+  "education": [
+    "Helsinki Business College",
+    "Kokopäiväiset opinnot ohjelmistokehityksessä",
+    "Valmistunut: 2024"
   ],
   "projects": [
     {
       "name": "Bandersnatch CLI",
-      "description": "Interaktiivinen, tekoälyohjattu portfolio, joka simuloi tietoista tietokonetta"
+      "description": "Interaktiivinen, tekoälyn ohjaama portfolio, joka simuloi tietoista tietokonetta"
     },
     {
-      "name": "Smart Home Dashboard",
-      "description": "IoT-laitteiden hallinta yhtenäisellä web-käyttöliittymällä"
+      "name": "Christmas Advent Calendar (SaaS)",
+      "description": "Nykyaikainen versio nostalgisesta joulukalenterista. Tämä repositorio sisältää täyden pinon koodin verkkopohjaiselle joulukalenterille. Luo, jaa ja hallinnoi räätälöityjä joulukalentereita helppokäyttöisen käyttöliittymän kautta, ja anna backendin hoitaa datan tallennus, autentikointi ja muut palvelut käyttäen Firebasea ja Node.js:ää."
+    },
+    {
+      "name": "AI Stockmarket Reporter",
+      "description": "Täyden pinon sovellus, joka tarjoaa reaaliaikaisia pörssipäivityksiä ja -analyyseja tekoälyn avulla. Rakennettu: frontend Reactilla, backend Node.js:llä ja Expressillä."
     }
   ],
   "features": [
     "ASCII-banneri paloittaisella paljastuksella, jitterillä, piippauksilla ja responsiivisella skaalauksella",
-    "OpenAI-pohjainen avustaja ja RAG Lukea koskeville tiedoille",
+    "OpenAI-voimainen avustaja ja RAG Lukea koskeville tiedoille",
     "Vektorikantaintegraatio tarkkoja ja ajantasaisia vastauksia varten",
     "Visuaalinen glitch-liipaisin (/glitch), rajattuna tulostealueeseen",
-    "Valinnainen pikselimaski ja kustomoidut vierityspalkit",
-    "DOS-tyylinen kehote kellolla: C:\\SIM\\USER [HH:MM:SS]>"
+    "Valinnainen pikselipeite ja mukautetut vierityspalkit",
+    "DOS-tyylinen kehote elävällä kellolla: C:\\SIM\\USER [HH:MM:SS]>"
   ],
   "tips": [
     "Käytä 'banner' toistaaksesi intro-ASCII:n.",
     "Kokeile 'dir' tai 'ls' teemallista hakemistolistausta varten.",
-    "'scan' ajaa pienen diagnostiikkajakson useilla palkeilla.",
-    "Nuoli ylös/alas selaa historian (jos selaimesi muistaa).",
-    "Komennot eivät ole kirjainkoosta riippuvaisia; välilyönnit ohitetaan."
+    "'scan' ajaa pienen diagnostiikkajakson useilla palkkiviivoilla.",
+    "Nuoli ylös/alas selaa edellisiä syötteitä (jos selaimesi muistaa).",
+    "Komennot eivät ole kirjainkoosta riippuvaisia; välilyönnit argumenttien ympärillä ohitetaan."
   ],
   "creditsLines": [
     "Konsepti ja toteutus: Sinä + tämä avustaja",
-    "Tekniikka: React + Vite, Tailwind PostCSS:n kautta, ripaus WebAudioa",
+    "Tekniikka: React + Vite, Tailwind CSS, Node.js + Express. OpenAI API. Tuckersoft",
     "Kiitos klassisille terminaali-UI:lle inspiraatiosta"
   ],
   "versionInfo": {
@@ -51,45 +61,45 @@
     "server": "Palvelin: paikallinen päätepiste AI-vastauksille"
   },
   "changelog": [
-    "Lisätty DOS-tyylinen kellonaika [HH:MM:SS]",
-    "Banneri keskitetty, tausta yhtenäistetty",
-    "Erilaisia visuaalisia viilauksia: skaalaus, pikselimaski, glitch-rajaukset",
-    "Käynnistyssekvenssi useilla edistymispalkeilla"
+    "Lisätty DOS-tyylinen kellokomento [HH:MM:SS]",
+    "Banneri keskitetty vaakasuunnassa; tausta yhtenäistetty",
+    "Erilaisia visuaalisia parannuksia: skaalaus, pikselipeite, glitchin rajaus",
+    "Käynnistyssekvenssi useilla edistymisvaiheilla"
   ],
   "faq": [
     {
       "q": "Onko tämä oikea shell?",
-      "a": "Tämä on teemoitettu UI; osa komennoista on simuloituja huvin vuoksi."
+      "a": "Tämä on teemoitettu käyttöliittymä; osa komennoista on simuloitu huvin vuoksi."
     },
     {
       "q": "Miksi teksti hohtaa?",
-      "a": "Fosforinostalgia. Säädä kirkkautta jos silmiä rasittaa."
+      "a": "Fosforinäyttöjen nostalgia. Säädä kirkkautta, jos silmät väsyvät."
     }
   ],
   "story": [
     "Offline-järjestelmän kaiku herää pimeydessä.",
-    "Sirpaleet latautuvat; banneri välähtää paikalleen, odottaen syötettä.",
+    "Sirpaleet latautuvat; banneri välähtää paikalleen ja odottaa syötettä.",
     "Jossain telemetria on mykistetty — ja se tuntuu tahalliselta."
   ],
   "github": {
     "profile": "https://github.com/OGOZ111",
     "repositories": [
-      "bandersnatch-cli",
-      "retro-web-terminal",
-      "ai-powered-assistant"
+      "bandersnatch-cli @ https://github.com/OGOZ111/bandersnatch-cli",
+      "Christmas-Advent-Calendar-SaaS @ https://github.com/OGOZ111/CalendarApp-Team-5-2025",
+      "Typescript Youtube Clone @ https://github.com/OGOZ111/Youtube-Clone-Typescript-React"
     ]
   },
   "internship": {
-    "company": "ABC Oy",
+    "company": "Unfair Advantage Oy",
     "duration": "Kesä 2024",
-    "role": "Harjoittelija, ohjelmistokehitys"
+    "role": "Ohjelmistokehityksen harjoittelija"
   },
   "languagesList": ["JavaScript", "Python", "Typescript", "HTML/CSS"],
   "technologiesList": ["React", "Node.js", "Express", "MongoDB"],
   "educationList": [
-    "Helsingin Business College",
+    "Helsinki Business College",
     "Kokopäiväiset opinnot ohjelmistokehityksessä",
-    "Valmistuminen: 2024"
+    "Valmistunut: 2024"
   ],
   "directory": {
     "volume": "SIMULAATIO",
