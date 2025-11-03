@@ -2,6 +2,7 @@
   "name": "Luke B",
   "role": "Full Stack Developer",
   "based_in": "Finland",
+  "raised_in": "Australia",
   "skills": [
     "React",
     "Node.js",
@@ -18,7 +19,7 @@
   "education": [
     "Helsinki Business College",
     "Fulltime studies in Software Development",
-    "Graduation: 2024"
+    "Graduated: 2024"
   ],
 
   "projects": [
@@ -27,8 +28,12 @@
       "description": "Interactive AI-driven portfolio simulating a sentient computer"
     },
     {
-      "name": "Smart Home Dashboard",
-      "description": "Control IoT devices using a unified web interface"
+      "name": "Christmas Advent Calendar (SaaS)",
+      "description": "A modern twist to a nostalgic holiday tradition. This repository contains the full stack code for an online advent calendar. Create, share, and manage custom-made advent calendars through a user-friendly frontend, and let the backend handle data storage, authentication, and other services using Firebase and Node.js."
+    },
+    {
+      "name": "AI Stockmarket Reporter",
+      "description": "A full-stack application that provides real-time stock market updates and analysis using AI. Built with React for the frontend and Node.js with Express for the backend."
     }
   ],
   "features": [
@@ -48,7 +53,7 @@
   ],
   "creditsLines": [
     "Concept & Implementation: You + this assistant",
-    "Tech: React + Vite, Tailwind via PostCSS, a hint of WebAudio",
+    "Tech: React + Vite, Tailwind CSS, Node.js + Express. OpenAI API. Tuckersoft",
     "Thanks to classic terminal UIs for the inspiration"
   ],
   "versionInfo": {
@@ -80,13 +85,13 @@
   "github": {
     "profile": "https://github.com/OGOZ111",
     "repositories": [
-      "bandersnatch-cli",
-      "retro-web-terminal",
-      "ai-powered-assistant"
+      "bandersnatch-cli @ https://github.com/OGOZ111/bandersnatch-cli",
+      "Christmas-Advent-Calendar-SaaS @ https://github.com/OGOZ111/CalendarApp-Team-5-2025",
+      "Typescript Youtube Clone @ https://github.com/OGOZ111/Youtube-Clone-Typescript-React"
     ]
   },
   "internship": {
-    "company": "ABC Corp",
+    "company": "Unfair Advantage Oy",
     "duration": "Summer 2024",
     "role": "Software Engineering Intern"
   },
@@ -95,7 +100,7 @@
   "educationList": [
     "Helsinki Business College",
     "Fulltime studies in Software Development",
-    "Graduation: 2024"
+    "Graduated: 2024"
   ],
   "directory": {
     "volume": "SIMULATION",

@@ -1,12 +1,12 @@
 # MIRROR NODE — AI Assistant CLI
 
-An employer‑friendly, bilingual terminal portfolio that demonstrates Luke B’s engineering approach: fast UX, clear structure, and a reliable AI layer that stays on‑brand.
+Bandersnatch inspired CLI terminal with RAG (Postgres/Supabase) AI Integration
 
 — Frontend: React + Vite + Tailwind — Backend: Node/Express + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
 
 ## Purpose
 
-Showcase my projects and background in a modular, interactive way. The UI evokes a retro terminal, but the engineering is modern: typed React components, clean routing, sanitized AI output, and clear fallbacks when the AI key isn’t present.
+Showcase my projects and background in a modular, interactive way. The UI is a retro terminal, but the engineering is modern: typed React components, clean routing, sanitized AI output, and clear fallbacks when the AI key isn’t present.
 
 ## Highlights
 
@@ -65,11 +65,6 @@ Showcase my projects and background in a modular, interactive way. The UI evokes
 - Supabase (Postgres + pgvector), optional full‑text search merge
 - Discord bot relay for contact messages
 
-## How it reads for recruiters
+If you’d like a quick tour the project is live currently at https://mirrornode.netlify.app/ . Type “contact <your message>” in the app and a note will be forwarded to Luke.
 
-- Clear separation between static portfolio content and dynamic AI retrieval
-- Strong prompt discipline (third‑person voice, no markdown/no prompt echo)
-- Real‑world integrations (Discord messaging, RAG over Postgres)
-- Safe defaults and production‑minded concerns (rate limiting, input cleanup)
-
-If you’d like a quick tour or credentials for a live demo, feel free to reach out. Type “contact <your message>” in the app and a note will be forwarded to Luke.
+This project is subject to ongoing development and testing/tuning.

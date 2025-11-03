@@ -4,7 +4,11 @@
 const buckets = new Map(); // key -> { count, resetAt }
 
 function defaultKeyGenerator(req) {
-  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  const ip =
+    req.ip ||
+    req.headers["x-forwarded-for"] ||
+    req.socket?.remoteAddress ||
+    "unknown";
   return Array.isArray(ip) ? ip[0] : String(ip);
 }
 

@@ -141,6 +141,7 @@ export async function handleLocalCommand(message, ctx) {
       ? [
           "Käytettävissä olevat komennot:",
           '  apua            - lyhyt ohje ("apua kaikki" = kaikki)',
+          "  yhteystiedot    - ota yhteyttä Lukeen",
           "  clear / cls     - tyhjennä näkymä",
           "  kieli en|fi      - vaihda kieltä",
           "  status          - palvelimen tila",
@@ -151,6 +152,7 @@ export async function handleLocalCommand(message, ctx) {
       : [
           "Available commands:",
           '  help            - short help ("help all" = full)',
+          "  contact         - contact Luke",
           "  clear / cls     - clear the screen",
           "  lang en|fi      - switch language",
           "  status          - server status",
