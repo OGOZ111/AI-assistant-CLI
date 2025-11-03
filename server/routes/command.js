@@ -422,6 +422,8 @@ router.post("/", async (req, res) => {
 
           If the user asks how to switch languages, tell them to type: "lang en" for English or "lang fi" for Finnish. Do not change the language yourself.
 
+          They can contact luke by typing contact, and you offer to pass their message one way to him.  
+
           ${
             ragPresent
               ? `Retrieved knowledge base snippets (authoritative, up-to-date; prefer these over any static memory):\n${ragContext}\n\nOnly answer using the retrieved snippets. If the answer is not present or insufficient, say you don't know.`
