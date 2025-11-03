@@ -2,6 +2,7 @@ import express from "express";
 import fs from "fs";
 import OpenAI from "openai";
 import { getSupabase } from "../config/connectDB.js";
+import { sendDiscordMessage } from "../config/discord.js";
 import {
   logChatMessage,
   getConversationHistory,
@@ -270,10 +271,22 @@ function buildStaticCommands(memory, lang = "en") {
       ),
     ].join("\n"),
 
-    commands: [
-      "> LINKEDIN",
-      " - There are no commands. Only paths. Choose wisely.",
-    ].join("\n"),
+    commands:
+      lang === "fi"
+        ? [
+            "> YHTEYSTIEDOT",
+            " - Voit ottaa yhteyttä: kirjoita contact <viestisi> ja välitän sen Lukelle.",
+            "",
+            "> HUOMAUTUS",
+            " - Komentoja ei ole. Vain polkuja. Valitse viisaasti.",
+          ].join("\n")
+        : [
+            "> CONTACT",
+            " - To contact Luke: type contact <your message> and I will pass it on.",
+            "",
+            "> NOTE",
+            " - There are no commands. Only paths. Choose wisely.",
+          ].join("\n"),
 
     help: [
       "Available commands:",
@@ -320,6 +333,31 @@ router.post("/", async (req, res) => {
   if (staticCommands[canonical]) {
     console.log("Handled static command:", canonical, "(lang:", useLang, ")");
     return res.json({ response: staticCommands[canonical], conversationId });
+  }
+
+  // Contact intent handler: "contact <message>" or "message <message>"
+  const contactMatch = String(inputForProcessing).match(
+    /^\s*(contact|message)\s*[:\-]?\s*(.*)$/i
+  );
+  if (contactMatch) {
+    const msg = (contactMatch[2] || "").trim();
+    if (!msg) {
+      const tip =
+        useLang === "fi"
+          ? "Jos haluat ottaa yhteyttä, kirjoita: contact <viestisi>. Välitän viestin Lukelle."
+          : "If you'd like to get in touch, type: contact <your message>. I'll pass it on to Luke.";
+      return res.json({ response: tip, conversationId });
+    }
+    try {
+      await sendDiscordMessage(
+        `📩 CONTACT | cid:${conversationId} | lang:${useLang}\n${msg}`
+      );
+    } catch {}
+    const ack =
+      useLang === "fi"
+        ? "Selvä. Välitän tämän viestin Lukelle. Lisää yhteystietosi, jos haluat vastauksen."
+        : "Got it. I’ll pass this message to Luke. Include your contact info if you’d like a reply.";
+    return res.json({ response: ack, conversationId });
   }
 
   // Easter eggs for specific commands
