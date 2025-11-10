@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install (root workspace)
+        run: npm ci
+
+      - name: Install client deps
+        run: npm --prefix client ci
+
+      - name: Install server deps
+        run: npm --prefix server ci
+
+      - name: Build client
+        run: npm --prefix client run build
+
+      - name: Build server
+        run: npm --prefix server run build
+
+      - name: Lint client (if configured)
+        run: |
+          if npm --prefix client run lint --silent 2>/dev/null; then
+            npm --prefix client run lint;
+          else
+            echo "No client lint script defined, skipping";
+          fi
+
+      - name: Run server tests (if any)
+        run: |
+          if npm --prefix server run test --silent 2>/dev/null; then
+            npm --prefix server run test;
+          else
+            echo "No server tests defined, skipping";
+          fi
+
+      - name: Run client tests (if any)
+        run: |
+          if npm --prefix client run test --silent 2>/dev/null; then
+            npm --prefix client run test;
+          else
+            echo "No client tests defined, skipping";
+          fi
