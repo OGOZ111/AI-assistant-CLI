@@ -8,12 +8,15 @@ RUN npm ci
 COPY src ./src
 RUN npm run build
 
+# Prepare production-only node_modules in a separate folder so the final image
+# doesn't need to run `npm ci` (avoids network/lockfile issues during final stage).
+RUN npm ci --production --prefix /app/prod_node_modules
+
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install production dependencies only
-COPY package*.json ./
-RUN npm ci --production
+# Copy production node_modules prepared in builder stage
+COPY --from=builder /app/prod_node_modules/node_modules ./node_modules
 
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
