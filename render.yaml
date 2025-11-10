@@ -5,6 +5,7 @@ services:
     branch: main
     plan: free
     root: server
-    buildCommand: "npm run build"
+  # Ensure devDependencies (TypeScript & @types) are installed before building
+  buildCommand: "npm install --include=dev && npm run build"
     startCommand: "npm run start"
     autoDeploy: true
