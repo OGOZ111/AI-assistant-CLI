@@ -20,6 +20,8 @@ RUN npm run build
 # the final image contains only production deps without making extra network calls.
 RUN mkdir -p /app/prod_node_modules && \
 	cp -R node_modules /app/prod_node_modules/ && \
+	# copy package.json so `npm prune --production` knows which deps are prod
+	cp package*.json /app/prod_node_modules/ && \
 	npm --prefix /app/prod_node_modules prune --production
 
 FROM node:20-alpine AS runner
