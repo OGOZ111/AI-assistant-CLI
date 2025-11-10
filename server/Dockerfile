@@ -14,8 +14,12 @@ COPY src ./src
 RUN npm run build
 
 # Prepare production-only node_modules in a separate folder so the final image
-# doesn't need to run `npm ci` (avoids network/lockfile issues during final stage).
-RUN npm install --production --prefix /app/prod_node_modules
+# doesn't need to run `npm install` (avoids network/lockfile issues during final stage).
+# We already ran `npm install` above to get dev + prod deps for the build.
+# Copy those node_modules and prune devDependencies in-place in the copy so
+# the final image contains only production deps without making extra network calls.
+RUN cp -R node_modules /app/prod_node_modules && \
+	npm --prefix /app/prod_node_modules prune --production
 
 FROM node:20-alpine AS runner
 WORKDIR /app
