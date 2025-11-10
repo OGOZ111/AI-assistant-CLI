@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bandersnatch-server
+    env: node
+    branch: main
+    repo: https://github.com/OGOZ111/AI-assistant-CLI
+    plan: free
+    buildCommand: "npm --prefix server run build"
+    startCommand: "npm --prefix server run start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
