@@ -4,13 +4,18 @@ WORKDIR /app
 # Install dependencies (including dev) and build TypeScript
 COPY package*.json ./
 COPY tsconfig.json ./
-RUN npm ci
+# Use `npm install` here instead of `npm ci` because `npm ci` requires
+# package.json and package-lock.json to be perfectly in sync. In some
+# development workflows the lockfile may be out-of-date which causes
+# `npm ci` to fail inside the Docker build. `npm install` will update
+# the lockfile locally during the build step and proceed.
+RUN npm install
 COPY src ./src
 RUN npm run build
 
 # Prepare production-only node_modules in a separate folder so the final image
 # doesn't need to run `npm ci` (avoids network/lockfile issues during final stage).
-RUN npm ci --production --prefix /app/prod_node_modules
+RUN npm install --production --prefix /app/prod_node_modules
 
 FROM node:20-alpine AS runner
 WORKDIR /app
