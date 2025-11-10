@@ -36,6 +36,7 @@ export function broadcastToConversation( // This function broadcasts a payload t
 }
 
 export function getActiveConversations(): ConversationSummary[] {
+  // This function returns a summary of active conversations and their subscriber counts
   const out: ConversationSummary[] = [];
   for (const [cid, set] of clients.entries()) {
     out.push({ conversationId: cid, subscribers: set.size });

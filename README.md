@@ -4,6 +4,8 @@
 
 Bandersnatch inspired CLI terminal with RAG (Postgres/Supabase) AI Integration
 
+https://mirrornode.netlify.app/
+
 — Frontend: React + Vite + Tailwind
 — Backend: Typescript/Nodejs + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
 
@@ -69,6 +71,6 @@ Showcase my projects and background in a modular, interactive way. The UI is a r
 - Supabase (Postgres + pgvector), optional full‑text search merge
 - Discord bot relay for contact messages
 
-If you’d like a quick tour the project is live currently at https://mirrornode.netlify.app/ . Type “contact <your message>” in the app and a note will be forwarded to Luke.
+Type “contact <your message>” in the app and a note will be forwarded to Luke.
 
 This project is subject to ongoing development and testing/tuning.

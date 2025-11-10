@@ -13,8 +13,7 @@ router.get("/", (req: Request, res: Response) => {
 > Name: Luke B
 > Role: Full Stack Developer
 > Location: Finland
-> Contact: lukeb@example.com
-> LinkedIn: https://linkedin.com/in/lukeb
+> Contact: lukebart111@hotmail.com
 > GitHub: https://github.com/lukeb
 > Resume: https://lukeb.dev/resume.pdf
 > ===============================
@@ -28,8 +27,7 @@ router.get("/", (req: Request, res: Response) => {
 > Nimi: Luke B
 > Rooli: Full Stack -kehittäjä
 > Sijainti: Suomi
-> Yhteys: lukeb@example.com
-> LinkedIn: https://linkedin.com/in/lukeb
+> Yhteys: lukebart111@hotmail.com
 > GitHub: https://github.com/lukeb
 > CV: https://lukeb.dev/resume.pdf
 > ===============================

@@ -21,6 +21,7 @@ export function setDiscordOnReply(handler: ReplyHandler) {
 }
 
 export async function initDiscord(): Promise<void> {
+  // This function initializes the Discord bot if configured
   try {
     const token = process.env.DISCORD_BOT_TOKEN;
     channelId = process.env.DISCORD_CHANNEL_ID || null;
@@ -54,6 +55,7 @@ export async function initDiscord(): Promise<void> {
     });
 
     client.on("messageCreate", async (message) => {
+      // Handle incoming messages for /reply command
       try {
         if (!client) return;
         if (message.author?.bot) return;
@@ -83,6 +85,7 @@ export async function initDiscord(): Promise<void> {
 }
 
 export async function sendDiscordMessage(content?: string): Promise<void> {
+  // This function sends a message to the configured Discord channel
   try {
     if (!client || !channelId || !content) return;
     const ch = await client.channels.fetch(channelId);
