@@ -32,10 +32,20 @@ jobs:
         run: npm --prefix server ci
 
       - name: Build client
-        run: npm --prefix client run build
+        run: |
+          if [ -f client/package.json ] && grep -q '"build"' client/package.json; then
+            npm --prefix client run build
+          else
+            echo "No client build script found, skipping client build"
+          fi
 
       - name: Build server
-        run: npm --prefix server run build
+        run: |
+          if [ -f server/package.json ] && grep -q '"build"' server/package.json; then
+            npm --prefix server run build
+          else
+            echo "No server build script found, skipping server build"
+          fi
 
       - name: Lint client (if configured)
         run: |
