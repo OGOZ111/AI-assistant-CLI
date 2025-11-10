@@ -10,7 +10,8 @@ COPY tsconfig.json ./
 # `npm ci` to fail inside the Docker build. `npm install` will update
 # the lockfile locally during the build step and proceed.
 RUN npm install
-COPY src ./src
+# Copy project files (including src). Use a .dockerignore to keep node_modules, dist and .env out of the context.
+COPY . .
 RUN npm run build
 
 # Prepare production-only node_modules in a separate folder so the final image
@@ -32,6 +33,11 @@ COPY --from=builder /app/prod_node_modules/node_modules ./node_modules
 
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
+# Copy curated static memory files from the source tree into the runtime dist folder
+# The TS build doesn't emit these JSON files so copy them explicitly so the runtime
+# can resolve ../memory.json as expected by the compiled code.
+COPY --from=builder /app/src/memory.json ./dist/memory.json
+COPY --from=builder /app/src/memory.fi.json ./dist/memory.fi.json
 
 ENV NODE_ENV=production
 EXPOSE 5000

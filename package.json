@@ -14,6 +14,7 @@
     "start": "concurrently -n CLIENT,SERVER -c green,cyan \"npm --prefix client run dev\" \"npm --prefix server start\""
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "vitest": "^4.0.8"
   }
 }

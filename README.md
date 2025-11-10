@@ -1,8 +1,10 @@
 # MIRROR NODE — AI Assistant CLI
 
+[![CI](https://github.com/OGOZ111/AI-assistant-CLI/actions/workflows/ci.yml/badge.svg)](https://github.com/OGOZ111/AI-assistant-CLI/actions/workflows/ci.yml)
+
 Bandersnatch inspired CLI terminal with RAG (Postgres/Supabase) AI Integration
 
-— Frontend: React + Vite + Tailwind — Backend: Node/Express + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
+— Frontend: React + Vite + Tailwind — Backend: Typescript/Nodejs + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
 
 ## Purpose
 
@@ -33,7 +35,7 @@ Showcase my projects and background in a modular, interactive way. The UI is a r
   - Discord integration for “contact <message>”
   - In‑memory rate limiter (global + stricter caps for AI endpoints)
 
-## Key features (details)
+## Key features
 
 - Bilingual content
   - `server/memory.json` (EN) and `server/memory.fi.json` (FI) are kept in sync
