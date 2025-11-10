@@ -1,45 +1,13 @@
-import express, { RequestHandler } from "express";
-import cors from "cors";
 import dotenv from "dotenv";
-import commandRouter from "./routes/command";
-import recruiterRouter from "./routes/recruiter";
-import statusRouter from "./routes/status";
+import app from "./app";
 import { initSupabase, verifySupabaseConnection } from "./config/connectDB";
-import ragRouter from "./routes/rag";
-import chatRouter from "./routes/chat";
 import { initDiscord, setDiscordOnReply } from "./config/discord";
 import { logChatMessage } from "./services/conversations";
-import { createRateLimiter } from "./middlewares/rateLimiter";
 
 dotenv.config();
 
-const app = express();
 // If behind a proxy (Render, Vercel, etc.), trust the proxy so req.ip is accurate
 app.set("trust proxy", true);
-app.use(cors());
-app.use(express.json());
-
-// Global baseline limiter (per-IP): defaults 120 req/min; configurable via env
-const globalLimiter: RequestHandler = createRateLimiter({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 120,
-  prefix: "rl:global",
-});
-app.use(globalLimiter);
-
-// Stricter limiter for AI-heavy endpoints
-const aiLimiter: RequestHandler = createRateLimiter({
-  windowMs: Number(process.env.RATE_LIMIT_AI_WINDOW_MS) || 60_000,
-  max: Number(process.env.RATE_LIMIT_AI_MAX) || 20,
-  message: "Too many AI requests. Please slow down and try again shortly.",
-  prefix: "rl:ai",
-});
-
-app.use("/api/command", aiLimiter, commandRouter); // AI command interface API route for terminal-like interactions for normal users
-app.use("/api/recruiter", recruiterRouter); // Recruiter Mode API route for tailored responses for recruiters
-app.use("/api/status", statusRouter); // Server status API route
-app.use("/api/rag", aiLimiter, ragRouter); // RAG API route for document retrieval and question answering from knowledge base in Supabase
-app.use("/api/chat", aiLimiter, chatRouter); // Chat streaming + SSE + Discord bridge
 
 const PORT = process.env.PORT || 5000;
 
