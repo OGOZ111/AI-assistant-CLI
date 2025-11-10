@@ -18,7 +18,8 @@ RUN npm run build
 # We already ran `npm install` above to get dev + prod deps for the build.
 # Copy those node_modules and prune devDependencies in-place in the copy so
 # the final image contains only production deps without making extra network calls.
-RUN cp -R node_modules /app/prod_node_modules && \
+RUN mkdir -p /app/prod_node_modules && \
+	cp -R node_modules /app/prod_node_modules/ && \
 	npm --prefix /app/prod_node_modules prune --production
 
 FROM node:20-alpine AS runner
