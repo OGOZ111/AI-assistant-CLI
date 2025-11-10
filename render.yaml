@@ -5,7 +5,12 @@ services:
     branch: main
     plan: free
     root: server
-  # Ensure devDependencies (TypeScript & @types) are installed before building
-  buildCommand: "npm install --include=dev && npm run build"
+    # Ensure devDependencies (TypeScript & @types) are installed before building.
+    # Try `npm ci` first for reproducible installs, fall back to `npm install` if that fails,
+    # then run the TypeScript build.
+    buildCommand: "(npm ci --include=dev || npm install --include=dev) && npm run build"
+    envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
     startCommand: "npm run start"
     autoDeploy: true
