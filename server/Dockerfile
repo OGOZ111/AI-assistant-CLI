@@ -1,14 +1,23 @@
-FROM node:18-alpine AS base
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install only production deps for smaller image
-FROM base AS deps
+# Install dependencies (including dev) and build TypeScript
+COPY package*.json ./
+COPY tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Install production dependencies only
 COPY package*.json ./
 RUN npm ci --production
 
-FROM base AS runner
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Copy compiled output
+COPY --from=builder /app/dist ./dist
+
 ENV NODE_ENV=production
 EXPOSE 5000
-CMD ["node", "index.js"]
+CMD ["node", "dist/index.js"]
