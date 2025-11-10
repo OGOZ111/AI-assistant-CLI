@@ -1,10 +1,12 @@
-import express from "express";
+import express, { Request, Response } from "express";
+
 const router = express.Router();
 
 // GET /api/recruiter - returns recruiter mode data
-router.get("/", (req, res) => {
+router.get("/", (req: Request, res: Response) => {
   console.log("Recruiter mode accessed");
-  const lang = (req.query.lang || "en").toLowerCase();
+  const lang = String(req.query.lang || "en").toLowerCase();
+
   const messageEn = `
 > ACCESS GRANTED: RECRUITER MODE
 > ===============================

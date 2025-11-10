@@ -1,9 +1,9 @@
-import express from "express";
+import express, { Request, Response } from "express";
 
 const router = express.Router();
 
 // GET /api/status - returns server status
-router.get("/", (req, res) => {
+router.get("/", (_req: Request, res: Response) => {
   const hasAI = Boolean(process.env.OPENAI_API_KEY);
   res.json({
     online: true,
@@ -14,7 +14,7 @@ router.get("/", (req, res) => {
   });
 });
 
-router.get("/ping", (req, res) => {
+router.get("/ping", (_req: Request, res: Response) => {
   res.json({ pong: true, now: Date.now() });
 });
 

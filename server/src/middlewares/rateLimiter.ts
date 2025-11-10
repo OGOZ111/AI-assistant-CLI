@@ -1,14 +1,12 @@
-// Simple in-memory rate limiter middleware for Express
-// Note: Per-process only. For multi-instance deployments, use a shared store (e.g., Redis).
+import { Request, Response, NextFunction, RequestHandler } from "express";
 
-const buckets = new Map(); // key -> { count, resetAt }
+type Bucket = { count: number; resetAt: number };
 
-function defaultKeyGenerator(req) {
-  const ip =
-    req.ip ||
-    req.headers["x-forwarded-for"] ||
-    req.socket?.remoteAddress ||
-    "unknown";
+const buckets = new Map<string, Bucket>(); // key -> { count, resetAt }
+
+function defaultKeyGenerator(req: Request): string {
+  const ipHeader = req.headers["x-forwarded-for"];
+  const ip = req.ip || ipHeader || req.socket?.remoteAddress || "unknown";
   return Array.isArray(ip) ? ip[0] : String(ip);
 }
 
@@ -19,8 +17,15 @@ export function createRateLimiter({
   message = "Too many requests. Please try again later.",
   statusCode = 429,
   prefix = "rl",
-} = {}) {
-  return function rateLimiter(req, res, next) {
+}: {
+  windowMs?: number;
+  max?: number;
+  keyGenerator?: (req: Request) => string;
+  message?: string;
+  statusCode?: number;
+  prefix?: string;
+} = {}): RequestHandler {
+  return function rateLimiter(req: Request, res: Response, next: NextFunction) {
     try {
       const now = Date.now();
       const keyRoot = keyGenerator(req);
@@ -53,9 +58,11 @@ export function createRateLimiter({
 }
 
 // Optional cleanup to avoid unbounded memory growth
-setInterval(() => {
+const cleanup: NodeJS.Timeout = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of buckets.entries()) {
     if (entry.resetAt < now) buckets.delete(key);
   }
-}, 5 * 60 * 1000).unref?.();
+}, 5 * 60 * 1000);
+// Allow process to exit naturally if this is the only active handle
+cleanup.unref?.();

@@ -1,43 +1,126 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import fs from "fs";
-import OpenAI from "openai";
-import { getSupabase } from "../config/connectDB.js";
-import { sendDiscordMessage } from "../config/discord.js";
+import path from "path";
+import {
+  EmbeddingsResponse,
+  ChatCompletionResponse,
+  EmbeddingsCreateParams,
+  ChatCompletionCreateParams,
+} from "../types/openai";
+
+type OpenAIClientLike = {
+  embeddings: {
+    create: (opts: EmbeddingsCreateParams) => Promise<EmbeddingsResponse>;
+  };
+  chat: {
+    completions: {
+      create: (
+        opts: ChatCompletionCreateParams
+      ) => Promise<ChatCompletionResponse>;
+    };
+  };
+};
+import { getSupabase, callSupabaseRpc } from "../config/connectDB";
+import { sendDiscordMessage } from "../config/discord";
 import {
   logChatMessage,
   getConversationHistory,
-} from "../services/conversations.js";
+} from "../services/conversations";
 
 const router = express.Router();
 
 // Resolve memory.json relative to this file for robustness
-const memoryEnPath = new URL("../memory.json", import.meta.url);
-const memoryFiPath = new URL("../memory.fi.json", import.meta.url);
+const memoryEnPath = path.resolve(__dirname, "../memory.json");
+const memoryFiPath = path.resolve(__dirname, "../memory.fi.json");
 
-function loadMemory(lang = "en") {
-  // "en" or "fi" that loads memory.fi.json if available
+type Memory = {
+  name?: string;
+  role?: string;
+  based_in?: string;
+  skills?: string[];
+  projects?: { name: string; description: string }[];
+  experience?: string[];
+  features?: string[];
+  tips?: string[];
+  creditsLines?: string[];
+  versionInfo?: { title?: string; ui?: string; server?: string };
+  changelog?: string[];
+  faq?: { q: string; a: string }[];
+  story?: string[];
+  github?: { profile?: string; repositories?: string[] };
+  internship?: { company?: string; duration?: string; role?: string };
+  languagesList?: string[];
+  technologiesList?: string[];
+  educationList?: string[];
+  directory?: {
+    volume?: string;
+    path?: string;
+    entries?: Array<{ type?: string; name?: string; size?: number }>;
+  };
+};
+
+function loadMemory(lang = "en"): Memory {
+  // Load memory JSON based on language
   try {
     if (lang === "fi" && fs.existsSync(memoryFiPath)) {
-      return JSON.parse(fs.readFileSync(memoryFiPath, "utf8"));
+      return JSON.parse(
+        fs.readFileSync(memoryFiPath, "utf8") as string
+      ) as Memory;
     }
   } catch {}
-  return JSON.parse(fs.readFileSync(memoryEnPath, "utf8"));
+  return JSON.parse(fs.readFileSync(memoryEnPath, "utf8") as string) as Memory;
 }
 
-// Lazily construct OpenAI client only if an API key is present
-function getOpenAI() {
+function getOpenAI(): OpenAIClientLike | null {
+  // Initialize OpenAI client if API key is set
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
-  try {
-    return new OpenAI({ apiKey: key });
-  } catch (e) {
-    console.error("OpenAI init error:", e?.message || e);
-    return null;
-  }
+
+  const fetchFn = (globalThis as unknown as { fetch?: typeof fetch }).fetch;
+  if (!fetchFn) return null;
+
+  const baseHeaders = {
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  };
+
+  const client: OpenAIClientLike = {
+    // Implement OpenAI client methods
+    embeddings: {
+      async create(opts: EmbeddingsCreateParams): Promise<EmbeddingsResponse> {
+        const res = await fetchFn("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: baseHeaders,
+          body: JSON.stringify(opts),
+        });
+        const json = (await res.json()) as EmbeddingsResponse;
+        return json;
+      },
+    },
+    chat: {
+      completions: {
+        async create(
+          opts: ChatCompletionCreateParams
+        ): Promise<ChatCompletionResponse> {
+          const res = await fetchFn(
+            "https://api.openai.com/v1/chat/completions",
+            {
+              method: "POST",
+              headers: baseHeaders,
+              body: JSON.stringify(opts),
+            }
+          );
+          const json = (await res.json()) as ChatCompletionResponse;
+          return json;
+        },
+      },
+    },
+  };
+
+  return client;
 }
 
-// Map localized aliases to canonical command keys
-const FI_ALIASES = {
+const FI_ALIASES: Record<string, string[]> = {
   about: ["tietoa"],
   projects: ["projektit"],
   skills: ["taidot"],
@@ -59,8 +142,10 @@ const FI_ALIASES = {
   commands: ["komennot"],
 };
 
-function resolveCanonicalCommand(cmd) {
-  // First, if it's already a known canonical key, return it
+function resolveCanonicalCommand(cmd: string): {
+  canonical: string;
+  inferredLang: string | null;
+} {
   const canonicalKeys = [
     "about",
     "projects",
@@ -94,31 +179,28 @@ function resolveCanonicalCommand(cmd) {
   return { canonical: cmd, inferredLang: null };
 }
 
-// Clean up AI output to avoid echoing terminal prompts or markdown wrappers
-function sanitizeAIOutput(text) {
+function sanitizeAIOutput(text: unknown): string {
   if (!text) return "";
   let t = String(text);
-  // Strip leading markdown bold that wraps a prompt-like string
   t = t.replace(/^\s*\*{1,3}\s*([^\n]*?)\s*\*{1,3}\s*/s, (m, inner) => {
     return /C:\\/.test(inner) && />/.test(inner) ? "" : m;
   });
-  // Remove a Windows-style prompt at the very start, e.g., C:\SIM\USER [12:34:56]>
   t = t.replace(/^\s*C:\\[^\n>]*>\s*/i, "");
-  // Remove a leading blockquote caret if present
   t = t.replace(/^\s*>\s+/, "");
   return t.trimStart();
 }
 
-// Lightweight language detector based on simple prefixes used in content
-function detectLangFromContent(text) {
+function detectLangFromContent(text: unknown): string | null {
   const s = String(text || "");
   if (/^\s*EN:\s*/i.test(s) || /^\s*\[en\]/i.test(s)) return "en";
   if (/^\s*FI:\s*/i.test(s) || /^\s*\[fi\]/i.test(s)) return "fi";
   return null;
 }
 
-// One-off language override via message prefix, e.g. "en: show projects" or "fi: projektit" ##### NOTE: THIS MUST BE TESTED THOROUGHLY BEFORE PROD!!!!!!
-function parseOneOffLangOverride(input) {
+function parseOneOffLangOverride(input: unknown): {
+  lang: string | null;
+  stripped: string | null;
+} {
   const m = String(input || "").match(/^\s*(en|fi)\s*:\s*(.*)$/i);
   if (!m) return { lang: null, stripped: null };
   const lang = m[1].toLowerCase();
@@ -126,11 +208,37 @@ function parseOneOffLangOverride(input) {
   return { lang, stripped };
 }
 
-// Predefined static commands
-function buildStaticCommands(memory, lang = "en") {
+function buildStaticCommands(
+  memory: Memory,
+  lang = "en"
+): Record<string, string> {
   const now = new Date();
   const date = now.toLocaleDateString();
   const time = now.toLocaleTimeString();
+
+  // Safe defaults for partially-typed memory object
+  const projects = memory.projects ?? [];
+  const skills = memory.skills ?? [];
+  const experience = memory.experience ?? [];
+  const features = memory.features ?? [];
+  const tips = memory.tips ?? [];
+  const creditsLines = memory.creditsLines ?? [];
+  const versionInfo = memory.versionInfo ?? { title: "", ui: "", server: "" };
+  const changelog = memory.changelog ?? [];
+  const faq = memory.faq ?? [];
+  const story = memory.story ?? [];
+  const github = memory.github ?? { profile: "", repositories: [] };
+  const internship = memory.internship ?? {
+    company: "",
+    duration: "",
+    role: "",
+  };
+  const languagesList = memory.languagesList ?? [];
+  const technologiesList = memory.technologiesList ?? [];
+  const educationList = memory.educationList ?? [];
+  const directory = memory.directory ?? { volume: "", path: "", entries: [] };
+  const githubRepos = github.repositories ?? [];
+  const entries = directory.entries ?? [];
 
   const L =
     lang === "fi"
@@ -172,82 +280,69 @@ function buildStaticCommands(memory, lang = "en") {
   return {
     about: [
       L.ABOUT,
-      `Name: ${memory.name}`,
-      `Role: ${memory.role}`,
-      `Based in: ${memory.based_in}`,
-      `Skills: ${memory.skills.join(", ")}`,
+      `Name: ${memory.name ?? ""}`,
+      `Role: ${memory.role ?? ""}`,
+      `Based in: ${memory.based_in ?? ""}`,
+      `Skills: ${skills.join(", ")}`,
     ].join("\n"),
 
-    projects: memory.projects
-      .map((p, i) => `> [${i + 1}] ${p.name}: ${p.description}`)
+    projects: projects
+      .map((p, i: number) => `> [${i + 1}] ${p.name}: ${p.description}`)
       .join("\n"),
 
-    skills: [L.SKILLS, `Installed modules: ${memory.skills.join(", ")}`].join(
-      "\n"
-    ),
+    skills: [L.SKILLS, `Installed modules: ${skills.join(", ")}`].join("\n"),
 
-    experience: [L.EXPERIENCE, ...memory.experience.map((l) => `- ${l}`)].join(
-      "\n"
-    ),
+    experience: [L.EXPERIENCE, ...experience.map((l) => `- ${l}`)].join("\n"),
 
-    features: [L.FEATURES, ...memory.features.map((l) => `- ${l}`)].join("\n"),
+    features: [L.FEATURES, ...features.map((l) => `- ${l}`)].join("\n"),
 
-    tips: [L.TIPS, ...memory.tips.map((l) => `- ${l}`)].join("\n"),
+    tips: [L.TIPS, ...tips.map((l) => `- ${l}`)].join("\n"),
 
-    credits: [L.CREDITS, ...memory.creditsLines].join("\n"),
+    credits: [L.CREDITS, ...creditsLines].join("\n"),
 
     version: [
       L.VERSION,
-      memory.versionInfo.title,
-      memory.versionInfo.ui,
-      memory.versionInfo.server,
+      versionInfo.title,
+      versionInfo.ui,
+      versionInfo.server,
     ].join("\n"),
 
-    changelog: [L.CHANGELOG, ...memory.changelog.map((l) => `- ${l}`)].join(
+    changelog: [L.CHANGELOG, ...changelog.map((l) => `- ${l}`)].join("\n"),
+
+    faq: [L.FAQ, ...faq.flatMap((qa) => [`Q: ${qa.q}`, `A: ${qa.a}`])].join(
       "\n"
     ),
 
-    faq: [
-      L.FAQ,
-      ...memory.faq.flatMap((qa) => [`Q: ${qa.q}`, `A: ${qa.a}`]),
-    ].join("\n"),
-
-    story: [L.STORY, ...memory.story].join("\n"),
+    story: [L.STORY, ...story].join("\n"),
 
     github: [
       L.GITHUB,
-      ` - Profile: ${memory.github.profile}`,
+      ` - Profile: ${github.profile}`,
       " - Repositories:",
-      ...memory.github.repositories.map((r) => `   - ${r}`),
+      ...githubRepos.map((r) => `   - ${r}`),
     ].join("\n"),
 
     internship: [
       L.INTERNSHIP,
-      ` - Company: ${memory.internship.company}`,
-      ` - Duration: ${memory.internship.duration}`,
-      ` - Role: ${memory.internship.role}`,
+      ` - Company: ${internship.company}`,
+      ` - Duration: ${internship.duration}`,
+      ` - Role: ${internship.role}`,
     ].join("\n"),
 
-    languages: [
-      L.LANGUAGES,
-      ...memory.languagesList.map((l) => ` - ${l}`),
-    ].join("\n"),
+    languages: [L.LANGUAGES, ...languagesList.map((l) => ` - ${l}`)].join("\n"),
 
     technologies: [
       L.TECHNOLOGIES,
-      ...memory.technologiesList.map((t) => ` - ${t}`),
+      ...technologiesList.map((t) => ` - ${t}`),
     ].join("\n"),
 
-    education: [
-      L.EDUCATION,
-      ...memory.educationList.map((e) => ` - ${e}`),
-    ].join("\n"),
+    education: [L.EDUCATION, ...educationList.map((e) => ` - ${e}`)].join("\n"),
 
     dir: [
-      ` Volume in drive C is ${memory.directory.volume}`,
-      ` Directory of ${memory.directory.path}`,
+      ` Volume in drive C is ${directory.volume}`,
+      ` Directory of ${directory.path}`,
       "",
-      ...memory.directory.entries.map((ent) =>
+      ...entries.map((ent) =>
         ent.type === "dir"
           ? `${date}  ${time}    <DIR>          ${ent.name}`
           : `${date}  ${time}                 ${String(ent.size).padStart(
@@ -258,10 +353,10 @@ function buildStaticCommands(memory, lang = "en") {
     ].join("\n"),
 
     ls: [
-      ` Volume in drive C is ${memory.directory.volume}`,
-      ` Directory of ${memory.directory.path}`,
+      ` Volume in drive C is ${directory.volume}`,
+      ` Directory of ${directory.path}`,
       "",
-      ...memory.directory.entries.map((ent) =>
+      ...entries.map((ent) =>
         ent.type === "dir"
           ? `${date}  ${time}    <DIR>          ${ent.name}`
           : `${date}  ${time}                 ${String(ent.size).padStart(
@@ -293,16 +388,22 @@ function buildStaticCommands(memory, lang = "en") {
       " about | projects | skills | experience | features | tips | credits | version | changelog | faq | story",
       " github | internship | languages | technologies | education | dir | ls | bandersnatch | control | mirror",
     ].join("\n"),
-  };
+  } as Record<string, string>;
 }
 
-// Handle incoming command
-router.post("/", async (req, res) => {
+router.post("/", async (req: Request, res: Response) => {
   console.log("Received command:", req.body);
-  const { input } = req.body;
-  const langRaw = req.body.lang;
-  const cidRaw =
-    req.body.conversationId || req.body.cid || req.body.conversation_id;
+  type CommandRequest = {
+    input?: string;
+    lang?: string;
+    conversationId?: string;
+    cid?: string;
+    conversation_id?: string;
+  };
+  const body = (req.body as CommandRequest) || {};
+  const { input } = body;
+  const langRaw = body.lang;
+  const cidRaw = body.conversationId || body.cid || body.conversation_id;
   const conversationId = String(
     cidRaw ||
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -310,7 +411,6 @@ router.post("/", async (req, res) => {
 
   if (!input) return res.status(400).json({ error: "No input provided" });
 
-  // Detect per-message override like "en: ..." or "fi: ..." (does not change global UI language)
   const { lang: overrideLang, stripped } = parseOneOffLangOverride(input);
   const inputForProcessing = stripped ?? input;
 
@@ -320,22 +420,17 @@ router.post("/", async (req, res) => {
   const memory = loadMemory(useLang);
   const staticCommands = buildStaticCommands(memory, useLang);
 
-  // Fetch previous conversation history BEFORE logging this turn
   const previousHistory = getConversationHistory(conversationId);
 
-  // Log user message (best-effort)
   try {
-    // Fire-and-forget logging to avoid adding latency
-    logChatMessage({ conversationId, author: "user", text: input });
+    void logChatMessage({ conversationId, author: "user", text: input });
   } catch {}
 
-  // Check for static command first
   if (staticCommands[canonical]) {
     console.log("Handled static command:", canonical, "(lang:", useLang, ")");
     return res.json({ response: staticCommands[canonical], conversationId });
   }
 
-  // Contact intent handler: "contact <message>" or "message <message>"
   const contactMatch = String(inputForProcessing).match(
     /^\s*(contact|message)\s*[:\-]?\s*(.*)$/i
   );
@@ -360,7 +455,6 @@ router.post("/", async (req, res) => {
     return res.json({ response: ack, conversationId });
   }
 
-  // Easter eggs for specific commands
   if (canonical === "bandersnatch") {
     return res.json({
       response:
@@ -369,18 +463,13 @@ router.post("/", async (req, res) => {
   }
 
   if (canonical === "control") {
-    return res.json({
-      response: "> You were never in control.",
-    });
+    return res.json({ response: "> You were never in control." });
   }
 
   if (canonical === "mirror") {
-    return res.json({
-      response: "> The reflection blinked first.",
-    });
+    return res.json({ response: "> The reflection blinked first." });
   }
 
-  // If not found, use AI to respond dynamically (when available)
   const openai = getOpenAI();
   if (!openai) {
     return res.json({
@@ -390,12 +479,10 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    // RAG retrieval: optionally fetch top chunks from Supabase if configured
     let ragContext = "";
     try {
       const supabase = getSupabase();
       if (supabase) {
-        // Simple coreference-aware embedding query: if input uses pronouns, hint subject
         const subjectName = memory?.name || "Luke";
         const enPronouns = /\b(he|him|his)\b/i;
         const fiPronouns = /\b(hän|hänen|häntä|he|heidän|heitä)\b/i;
@@ -404,19 +491,27 @@ router.post("/", async (req, res) => {
           ? `${inputForProcessing} (about ${subjectName})`
           : inputForProcessing;
 
-        const emb = await openai.embeddings.create({
+        type SupabaseMatchRow = {
+          id?: string;
+          score?: number;
+          metadata?: Record<string, unknown> | null;
+          content?: string;
+        };
+        const emb = (await openai.embeddings.create({
           model: "text-embedding-3-small",
           input: queryForEmbedding,
-        });
-        const queryEmbedding = emb.data[0].embedding;
-        // Try match_documents first; fallback to match_kb_chunks
-        let rpc = await supabase.rpc("match_documents", {
+        })) as EmbeddingsResponse;
+        const queryEmbedding = (emb.data?.[0]?.embedding ?? []) as number[];
+
+        let rpcName = "match_documents";
+        let rpc = await callSupabaseRpc<SupabaseMatchRow[]>(rpcName, {
           query_embedding: queryEmbedding,
           match_count: 6,
           min_similarity: 0.3,
         });
         if (rpc.error) {
-          rpc = await supabase.rpc("match_kb_chunks", {
+          rpcName = "match_kb_chunks";
+          rpc = await callSupabaseRpc<SupabaseMatchRow[]>(rpcName, {
             query_embedding: queryEmbedding,
             match_count: 6,
             min_similarity: 0.3,
@@ -437,7 +532,6 @@ router.post("/", async (req, res) => {
       // RAG is optional; proceed quietly if unavailable
     }
 
-    // Build short recent history for conversational context (exclude current turn)
     const recent = Array.isArray(previousHistory)
       ? previousHistory.slice(-6)
       : [];
@@ -447,7 +541,7 @@ router.post("/", async (req, res) => {
     }));
 
     const ragPresent = Boolean(ragContext && ragContext.trim());
-    const aiResponse = await openai.chat.completions.create({
+    const aiResponse = (await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: ragPresent ? 0.25 : 0.65,
       max_tokens: 900,
@@ -515,14 +609,13 @@ Ensure consistency between third-person phrasing and retrieved RAG data.`,
           content: inputForProcessing,
         },
       ],
-    });
+    })) as ChatCompletionResponse as ChatCompletionResponse;
     const outputRaw =
       aiResponse.choices?.[0]?.message?.content ?? "> (no response)";
     const output = sanitizeAIOutput(outputRaw);
-    // Respond first, then log in background to minimize latency
     res.json({ response: output, conversationId });
     try {
-      logChatMessage({ conversationId, author: "bot", text: output });
+      void logChatMessage({ conversationId, author: "bot", text: output });
     } catch {}
     console.log("AI response content:", output);
   } catch (error) {

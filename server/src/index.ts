@@ -1,15 +1,15 @@
-import express from "express";
+import express, { RequestHandler } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import commandRouter from "./routes/command.js";
-import recruiterRouter from "./routes/recruiter.js";
-import statusRouter from "./routes/status.js";
-import { initSupabase, verifySupabaseConnection } from "./config/connectDB.js";
-import ragRouter from "./routes/rag.js";
-import chatRouter from "./routes/chat.js";
-import { initDiscord, setDiscordOnReply } from "./config/discord.js";
-import { logChatMessage } from "./services/conversations.js";
-import { createRateLimiter } from "./middlewares/rateLimiter.js";
+import commandRouter from "./routes/command";
+import recruiterRouter from "./routes/recruiter";
+import statusRouter from "./routes/status";
+import { initSupabase, verifySupabaseConnection } from "./config/connectDB";
+import ragRouter from "./routes/rag";
+import chatRouter from "./routes/chat";
+import { initDiscord, setDiscordOnReply } from "./config/discord";
+import { logChatMessage } from "./services/conversations";
+import { createRateLimiter } from "./middlewares/rateLimiter";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // Global baseline limiter (per-IP): defaults 120 req/min; configurable via env
-const globalLimiter = createRateLimiter({
+const globalLimiter: RequestHandler = createRateLimiter({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
   max: Number(process.env.RATE_LIMIT_MAX) || 120,
   prefix: "rl:global",
@@ -28,7 +28,7 @@ const globalLimiter = createRateLimiter({
 app.use(globalLimiter);
 
 // Stricter limiter for AI-heavy endpoints
-const aiLimiter = createRateLimiter({
+const aiLimiter: RequestHandler = createRateLimiter({
   windowMs: Number(process.env.RATE_LIMIT_AI_WINDOW_MS) || 60_000,
   max: Number(process.env.RATE_LIMIT_AI_MAX) || 20,
   message: "Too many AI requests. Please slow down and try again shortly.",

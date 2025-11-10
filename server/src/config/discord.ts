@@ -1,20 +1,26 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
-let client = null;
-let channelId = null;
-let onReplyHandler = null;
+type ReplyHandler = (args: {
+  conversationId?: string;
+  message: string;
+  author?: string;
+}) => Promise<void> | void;
 
-function normalizeConversationId(raw) {
-  const s = String(raw || "").trim();
+let client: Client | null = null;
+let channelId: string | null = null;
+let onReplyHandler: ReplyHandler | null = null;
+
+function normalizeConversationId(raw: unknown): string {
+  const s = String(raw ?? "").trim();
   // Strip optional "cid:" prefix if provided by humans copying from logs
   return s.replace(/^cid:/i, "");
 }
 
-export function setDiscordOnReply(handler) {
+export function setDiscordOnReply(handler: ReplyHandler) {
   onReplyHandler = handler;
 }
 
-export async function initDiscord() {
+export async function initDiscord(): Promise<void> {
   try {
     const token = process.env.DISCORD_BOT_TOKEN;
     channelId = process.env.DISCORD_CHANNEL_ID || null;
@@ -24,6 +30,7 @@ export async function initDiscord() {
       );
       return;
     }
+
     client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
@@ -33,16 +40,23 @@ export async function initDiscord() {
       partials: [Partials.Channel],
     });
 
-    // Use 'clientReady' to avoid deprecation ('ready' will be removed in v15)
-    client.on("clientReady", () => {
-      console.log(`🤖 Discord bot logged in as ${client.user.tag}`);
-      // Announce bot is online
-      sendDiscordMessage(`🤖 Bot is online and ready to receive messages!`);
+    // Use 'clientReady' to avoid deprecation warnings in newer discord.js versions
+    client.once("clientReady", () => {
+      try {
+        console.log(`🤖 Discord bot logged in as ${client?.user?.tag}`);
+        // Announce bot is online (best-effort)
+        void sendDiscordMessage(
+          "🤖 Bot is online and ready to receive messages!"
+        );
+      } catch {
+        // ignore
+      }
     });
 
     client.on("messageCreate", async (message) => {
       try {
-        if (message.author.bot) return;
+        if (!client) return;
+        if (message.author?.bot) return;
         if (message.channelId !== channelId) return;
         const content = message.content || "";
         const m = content.match(/^\s*\/reply\s+(\S+)\s+([\s\S]+)$/i);
@@ -62,19 +76,24 @@ export async function initDiscord() {
     });
 
     await client.login(token);
-  } catch (e) {
-    console.warn("Discord init skipped:", e?.message || e);
+  } catch (e: unknown) {
+    const err = e as { message?: string } | undefined;
+    console.warn("Discord init skipped:", err?.message ?? e);
   }
 }
 
-export async function sendDiscordMessage(content) {
+export async function sendDiscordMessage(content?: string): Promise<void> {
   try {
     if (!client || !channelId || !content) return;
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) return;
-    await channel.send(String(content).slice(0, 1900));
-  } catch (e) {
-    // Silently ignore send failures
+    const ch = await client.channels.fetch(channelId);
+    // best-effort send — channel types differ between contexts; keep cast minimal
+    const channelAny = ch as unknown as {
+      send?: (c: string) => Promise<unknown>;
+    } | null;
+    if (!channelAny || typeof channelAny.send !== "function") return;
+    await channelAny.send(String(content).slice(0, 1900));
+  } catch {
+    // Silently ignore send failures — this is best-effort logging/notify
   }
 }
 
