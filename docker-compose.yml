@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./server/.env
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+# Notes:
+# - `server/.env` is read into the server container. Do not commit sensitive .env to public repos.
+# - Client is served on port 5173 (mapped to nginx:80 inside container). Adjust as needed.
