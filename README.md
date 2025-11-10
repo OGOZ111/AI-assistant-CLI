@@ -4,11 +4,12 @@
 
 Bandersnatch inspired CLI terminal with RAG (Postgres/Supabase) AI Integration
 
-— Frontend: React + Vite + Tailwind — Backend: Typescript/Nodejs + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
+— Frontend: React + Vite + Tailwind
+— Backend: Typescript/Nodejs + OpenAI (optional) — Data: Static memory + RAG (Postgres/Supabase)
 
 ## Purpose
 
-Showcase my projects and background in a modular, interactive way. The UI is a retro terminal, but the engineering is modern: typed React components, clean routing, sanitized AI output, and clear fallbacks when the AI key isn’t present.
+Showcase my projects and background in a modular, interactive way. The UI is a retro terminal, but the engineering is modern: typed React components, clean routing, sanitized AI output, and clear fallbacks when the AI key isn’t present. Fast and accurate retrieval through RAG postgres and vector embeddings.
 
 ## Highlights
 
@@ -21,13 +22,13 @@ Showcase my projects and background in a modular, interactive way. The UI is a r
 - Thoughtful UX touches: typewriter, banner reveal, progress scan, subtle CRT vibe
 - Built‑in rate limiting to prevent abuse
 
-## What’s inside (at a glance)
+## What’s inside
 
 - Client (React/Vite/Tailwind)
   - Terminal experience with input history, tab completion, and local commands
   - Components for typewriter effects, progress bars, and banner reveal
   - Clean separation of concerns (boot steps, CLI rendering, hooks)
-- Server (Express)
+- Server (Express) in Typescript
   - `/api/command` — the AI/portfolio brain; merges static memory with RAG when present
   - System prompt explicitly enforces third‑person voice and plain‑text output
   - Conversation history for pronoun/coreference resolution
@@ -54,16 +55,17 @@ Showcase my projects and background in a modular, interactive way. The UI is a r
   - Lightweight rate limiter with standard headers and sensible defaults
   - Trust‑proxy enabled for accurate IP behind CDNs
 
-## Easter eggs (tasteful)
+## Easter eggs
 
 - `/glitch` — a scoped visual glitch effect
 - `bandersnatch`, `control`, `mirror` — small narrative surprises in replies
 - DOS‑style clocked prompt and banner reveal with beeps
+- Netflix?
 
 ## Tech summary
 
 - React + Vite + Tailwind (client)
-- Node/Express (server), OpenAI (chat/embeddings)
+- Typescripte/Nodejs/Express (server), OpenAI (chat/embeddings)
 - Supabase (Postgres + pgvector), optional full‑text search merge
 - Discord bot relay for contact messages
 
